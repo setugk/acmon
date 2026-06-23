@@ -1,6 +1,6 @@
 {
-  "name": "Northstar",
-  "short_name": "Northstar",
+  "name": "Health",
+  "short_name": "Health",
   "description": "Your personal health companion — weekly workout plans, activity logging, and progress tracking.",
   "start_url": ".",
   "display": "standalone",
