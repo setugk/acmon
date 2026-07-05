@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="theme-color" content="#ffffff">
-  <title>Northstar</title>
+  <title>Acmon</title>
   <link rel="manifest" href="manifest.json">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -447,7 +447,7 @@
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
           </svg>
         </div>
-        <div class="onboarding-headline" style="font-size:34px;" id="app-name-display">Northstar</div>
+        <div class="onboarding-headline" style="font-size:34px;" id="app-name-display">Acmon</div>
         <div class="onboarding-sub">Your personal health companion</div>
       </div>
 
@@ -557,8 +557,8 @@
 
   <script>
     // ============ VERSION ============
-    const APP_VERSION = '2.0';
-    const APP_NAME = 'Health';
+    const APP_VERSION = '2.1';
+    const APP_NAME = 'Acmon';
     document.getElementById('app-footer').innerHTML = `${APP_NAME} v${APP_VERSION} &copy; Setu Kathawate`;
     document.getElementById('app-name-display').textContent = APP_NAME;
 
@@ -623,6 +623,9 @@
     });
 
     // ============ HELPERS ============
+    function localDateStr(d) {
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
     function escapeHtml(text) {
       const div = document.createElement('div');
       div.textContent = text;
@@ -925,7 +928,7 @@
       const d = new Date();
       const dow = d.getDay();
       d.setDate(d.getDate() - (dow === 0 ? 6 : dow - 1));
-      return d.toISOString().split('T')[0];
+      return localDateStr(d);
     }
 
     function weekRng(seed) {
@@ -1158,12 +1161,12 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
       const view = document.getElementById('view-health');
       const today = new Date();
       const todayDow = today.getDay();
-      const todayStr = today.toISOString().split('T')[0];
+      const todayStr = localDateStr(today);
       const displayDow = healthViewDay !== null ? healthViewDay : todayDow;
 
       const displayDate = new Date(today);
       displayDate.setDate(today.getDate() + (displayDow - todayDow));
-      const displayDateStr = displayDate.toISOString().split('T')[0];
+      const displayDateStr = localDateStr(displayDate);
       const displayDateLabel = displayDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
       const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -1367,11 +1370,11 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
     function renderProgress() {
       const view = document.getElementById('view-progress');
       const today = new Date();
-      const todayStr = today.toISOString().split('T')[0];
+      const todayStr = localDateStr(today);
       const hs = JSON.parse(localStorage.getItem(HEALTH_STATE_KEY) || '{}');
 
       function dayStatus(d) {
-        const dateStr = d.toISOString().split('T')[0];
+        const dateStr = localDateStr(d);
         if (dateStr > todayStr) return 'future';
         const dw = d.getDay();
         const sched = healthSchedule[dw];
@@ -1384,7 +1387,7 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
       }
 
       function dot(d, size) {
-        const ds = d.toISOString().split('T')[0];
+        const ds = localDateStr(d);
         const st = dayStatus(d);
         const isToday = ds === todayStr;
         const style = st === 'complete' ? `background:var(--success);`
@@ -1402,7 +1405,7 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
         let cols = '';
         for (let i = 0; i < 7; i++) {
           const d = new Date(mon); d.setDate(mon.getDate() + i);
-          const isToday = d.toISOString().split('T')[0] === todayStr;
+          const isToday = localDateStr(d) === todayStr;
           cols += `<div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;">
             <div style="font-size:11px;font-weight:${isToday ? '700' : '500'};color:${isToday ? 'var(--text-primary)' : 'var(--text-tertiary)'};">${LABELS[i]}</div>
             ${dot(d, 24)}
@@ -1425,7 +1428,7 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
         for (let i = 0; i < offset; i++) cells += `<div></div>`;
         for (let day = 1; day <= days; day++) {
           const d = new Date(yr, mo, day);
-          const isToday = d.toISOString().split('T')[0] === todayStr;
+          const isToday = localDateStr(d) === todayStr;
           cells += `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;padding-bottom:4px;">
             ${dot(d, 16)}
             <div style="font-size:8px;color:${isToday ? 'var(--accent)' : 'var(--text-muted)'};font-weight:${isToday ? '700' : '400'};">${day}</div>
@@ -1459,7 +1462,7 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
       let streak = 0;
       for (let i = 0; i < 180; i++) {
         const d = new Date(today); d.setDate(today.getDate() - i);
-        const dateStr = d.toISOString().split('T')[0];
+        const dateStr = localDateStr(d);
         if (dateStr > todayStr) continue;
         const sched = healthSchedule[d.getDay()];
         const extras = getHealthExtra(dateStr);
@@ -1472,7 +1475,7 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
       const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
       let activeDays = 0;
       for (const d = new Date(monthStart); d <= today; d.setDate(d.getDate() + 1)) {
-        const dateStr = d.toISOString().split('T')[0];
+        const dateStr = localDateStr(d);
         const sched = healthSchedule[d.getDay()];
         const extras = getHealthExtra(dateStr);
         if (extras.length > 0) { activeDays++; continue; }

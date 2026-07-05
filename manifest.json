@@ -1,6 +1,6 @@
 {
-  "name": "Health",
-  "short_name": "Health",
+  "name": "Acmon",
+  "short_name": "Acmon",
   "description": "Your personal health companion — weekly workout plans, activity logging, and progress tracking.",
   "start_url": ".",
   "display": "standalone",
