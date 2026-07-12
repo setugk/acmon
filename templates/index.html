@@ -21,15 +21,17 @@
       --text-secondary: #6b6b6b;
       --text-tertiary: #a3a3a3;
       --text-muted: #a3a3a3;
-      --accent: #E53E3E;
-      --accent-dim: rgba(229, 62, 62, 0.08);
+      --accent: #612B6D;
+      --accent-dim: rgba(97, 43, 109, 0.08);
       --success: #16a34a;
       --success-dim: rgba(22, 163, 74, 0.08);
       --warning: #d97706;
       --warning-dim: rgba(217, 119, 6, 0.08);
       --danger: #dc2626;
+      --danger-dim: rgba(220, 38, 38, 0.08);
       --radius: 12px;
       --radius-sm: 8px;
+      --header-h: 52px;
     }
 
     body {
@@ -48,6 +50,31 @@
       padding: 24px 20px;
       padding-bottom: 100px;
     }
+
+    /* Top App Header */
+    #app-header {
+      position: sticky;
+      top: 0;
+      z-index: 60;
+      height: var(--header-h);
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .app-header-title { font-size: 17px; font-weight: 700; letter-spacing: -0.4px; display: flex; align-items: center; gap: 8px; }
+    .app-header-title svg { flex-shrink: 0; }
+    .app-version { font-size: 11px; font-weight: 400; color: var(--text-tertiary); }
+    .header-action {
+      background: none; border: none; padding: 6px; cursor: pointer;
+      color: var(--text-secondary); display: flex; align-items: center;
+      border-radius: var(--radius-sm); transition: background 0.15s ease, color 0.15s ease;
+    }
+    .header-action:hover { background: var(--surface-hover); color: var(--text-primary); }
 
     .header { margin-bottom: 24px; }
     .greeting { font-size: 14px; color: var(--text-secondary); margin-bottom: 4px; }
@@ -177,31 +204,33 @@
     .bottom-nav {
       position: fixed;
       bottom: 0; left: 0; right: 0;
+      max-width: 480px;
+      margin: 0 auto;
       background: var(--surface);
       border-top: 1px solid var(--border);
       display: flex;
-      justify-content: center;
-      gap: 32px;
-      padding: 12px 20px;
-      padding-bottom: max(12px, env(safe-area-inset-bottom));
+      padding-bottom: env(safe-area-inset-bottom);
       z-index: 45;
     }
 
     .nav-item {
+      flex: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 4px;
+      justify-content: center;
+      gap: 3px;
       background: none;
       border: none;
       color: var(--text-tertiary);
       cursor: pointer;
-      padding: 4px 16px;
+      padding: 10px 4px;
+      transition: color 0.15s ease;
     }
 
     .nav-item.active { color: var(--accent); }
-    .nav-item svg { width: 24px; height: 24px; }
-    .nav-label { font-size: 11px; }
+    .nav-item svg { width: 22px; height: 22px; }
+    .nav-label { font-size: 11px; font-weight: 500; }
 
     .view { display: none; }
     .view.active { display: block; }
@@ -267,20 +296,40 @@
     .confirm-actions { display: flex; gap: 10px; }
     .confirm-actions .btn { flex: 1; }
 
-    /* Health View */
-    .health-week-strip { display: flex; gap: 6px; margin-bottom: 20px; }
-    .health-week-day {
-      flex: 1; height: 36px;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 11px; font-weight: 600; color: var(--text-tertiary);
-      cursor: pointer; transition: opacity 0.12s ease;
+    /* Progress View — streak hero */
+    .streak-hero {
+      background: linear-gradient(135deg, var(--accent), #3f1c47);
+      border-radius: var(--radius);
+      padding: 22px 20px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
     }
-    .health-week-day.workout { color: var(--text-secondary); }
-    .health-week-day.today { background: var(--accent); border-color: var(--accent); color: #ffffff; }
-    .health-week-day.selected:not(.today) { background: var(--text-primary); border-color: var(--text-primary); color: #ffffff; }
-    .health-week-day:hover:not(.today):not(.selected) { background: var(--surface-hover); }
+    .streak-hero-num { font-size: 44px; font-weight: 800; line-height: 1; letter-spacing: -1px; color: #ffffff; }
+    .streak-hero-label { font-size: 15px; font-weight: 600; margin-top: 4px; color: rgba(255,255,255,0.92); }
+    .streak-hero-icon { flex-shrink: 0; display: flex; }
+    .streak-hero-icon svg { width: 56px; height: 56px; display: block; }
+
+    /* Health View — date row */
+    .day-strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 20px; }
+    .day-pill {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 8px 4px; border-radius: var(--radius); cursor: pointer; min-width: 0;
+      border: 1px solid var(--border); background: var(--bg);
+      transition: all 0.12s ease;
+    }
+    .day-pill:hover:not(.active) { background: var(--surface-hover); }
+    .day-pill.active { background: var(--accent); border-color: var(--accent); }
+    .day-pill.is-today:not(.active) { border-color: var(--accent); }
+    .day-pill.past:not(.active) { opacity: 0.45; }
+    .dp-label { font-size: 11px; font-weight: 500; text-transform: uppercase; color: var(--text-tertiary); }
+    .day-pill.active .dp-label { color: rgba(255,255,255,0.7); }
+    .dp-num { font-size: 16px; font-weight: 700; color: var(--text-primary); margin-top: 2px; }
+    .day-pill.active .dp-num { color: #ffffff; }
+    .dp-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--text-tertiary); margin-top: 4px; }
+    .day-pill.active .dp-dot { background: rgba(255,255,255,0.7); }
     .health-rest-card { text-align: center; padding: 32px 20px; }
     .health-rest-title { font-size: 20px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; }
     .health-rest-desc { font-size: 14px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.5; }
@@ -300,13 +349,23 @@
     .api-key-details summary {
       list-style: none; cursor: pointer;
       display: flex; align-items: center; gap: 8px;
-      padding: 14px 0; font-size: 13px; color: var(--text-secondary);
-      user-select: none;
+      padding: 14px 12px; margin: 0 -12px; border-radius: var(--radius-sm);
+      font-size: 13px; color: var(--text-secondary);
+      user-select: none; transition: background 0.15s ease;
     }
+    .api-key-details summary:active { background: var(--accent-dim); }
+    .api-key-details summary svg { display: block; flex-shrink: 0; }
     .api-key-details summary::-webkit-details-marker { display: none; }
     .api-key-details[open] summary { color: var(--text-primary); }
-    .api-key-connected { color: var(--success); font-size: 11px; font-weight: 500; }
-    .api-key-chevron { margin-left: auto; transition: transform 0.2s; font-size: 11px; color: var(--text-tertiary); }
+    .api-key-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 9px; border-radius: 20px; flex-shrink: 0;
+      font-size: 11px; font-weight: 600; line-height: 1.4;
+    }
+    .api-key-badge.connected { background: var(--success-dim); color: var(--success); }
+    .api-key-badge.disconnected { background: var(--danger-dim); color: var(--danger); }
+    .api-key-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+    .api-key-chevron { margin-left: auto; flex-shrink: 0; display: flex; transition: transform 0.2s; color: var(--text-secondary); }
     .api-key-details[open] .api-key-chevron { transform: rotate(180deg); }
     .api-key-panel { padding-bottom: 16px; }
 
@@ -438,6 +497,24 @@
 </head>
 <body>
 
+  <header id="app-header">
+    <span class="app-header-title">
+      <svg width="20" height="20" fill="none" stroke="var(--accent)" stroke-width="1.5" viewBox="0 0 24 24">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+      </svg>
+      <span id="header-app-name">Acmon</span><span class="app-version" id="header-version"></span>
+    </span>
+    <button class="header-action" id="header-settings-btn" aria-label="Settings"></button>
+  </header>
+
+  <!-- Boot / connection screen -->
+  <div class="onboarding-screen" id="boot-screen" style="z-index:260;">
+    <div class="onboarding-container">
+      <div id="boot-status" style="font-size:15px;color:var(--text-secondary);">Connecting…</div>
+      <button class="btn btn-primary" id="boot-retry-btn" style="display:none;margin-top:16px;">Retry</button>
+    </div>
+  </div>
+
   <!-- Onboarding -->
   <div class="onboarding-screen" id="onboarding-screen">
     <div class="onboarding-container">
@@ -557,17 +634,19 @@
 
   <script>
     // ============ VERSION ============
-    const APP_VERSION = '2.1';
+    const APP_VERSION = '3.11';
     const APP_NAME = 'Acmon';
     document.getElementById('app-footer').innerHTML = `${APP_NAME} v${APP_VERSION} &copy; Setu Kathawate`;
     document.getElementById('app-name-display').textContent = APP_NAME;
+    document.getElementById('header-app-name').textContent = APP_NAME;
+    document.getElementById('header-version').textContent = `v${APP_VERSION}`;
 
     // ============ ONBOARDING ============
     const ONBOARDED_KEY = 'health-onboarded';
 
     function initOnboarding() {
       const screen = document.getElementById('onboarding-screen');
-      if (localStorage.getItem(ONBOARDED_KEY)) {
+      if (getState(ONBOARDED_KEY)) {
         screen.classList.add('hidden');
         return;
       }
@@ -595,7 +674,7 @@
       }
 
       function completeOnboarding() {
-        localStorage.setItem(ONBOARDED_KEY, 'true');
+        setState(ONBOARDED_KEY, true);
         screen.classList.add('hidden');
       }
 
@@ -612,12 +691,8 @@
       document.getElementById('confirm-all-overlay').classList.remove('visible');
     });
 
-    document.getElementById('confirm-all-reset').addEventListener('click', () => {
-      localStorage.removeItem(WEEKLY_SCHEDULE_KEY);
-      localStorage.removeItem(HEALTH_STATE_KEY);
-      localStorage.removeItem(HEALTH_EXTRA_KEY);
-      localStorage.removeItem(HEALTH_PREFS_KEY);
-      localStorage.removeItem(ONBOARDED_KEY);
+    document.getElementById('confirm-all-reset').addEventListener('click', async () => {
+      await Promise.all([WEEKLY_SCHEDULE_KEY, HEALTH_STATE_KEY, HEALTH_EXTRA_KEY, HEALTH_PREFS_KEY, ONBOARDED_KEY].map(removeState));
       document.getElementById('confirm-all-overlay').classList.remove('visible');
       location.reload();
     });
@@ -675,6 +750,33 @@
     const HEALTH_STATE_KEY = 'health-state';
     const HEALTH_EXTRA_KEY = 'health-extra';
     const HEALTH_PREFS_KEY = 'health-prefs';
+
+    // ============ STATE (server-synced, replaces localStorage) ============
+    let store = {};
+
+    function getState(key, fallback = null) {
+      return store[key] !== undefined ? store[key] : fallback;
+    }
+
+    function setState(key, value) {
+      store[key] = value;
+      return fetch(`/api/state/${key}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value }),
+      }).catch(err => console.error(`Failed to save ${key}:`, err));
+    }
+
+    function removeState(key) {
+      delete store[key];
+      return fetch(`/api/state/${key}`, { method: 'DELETE' }).catch(err => console.error(`Failed to delete ${key}:`, err));
+    }
+
+    async function loadState() {
+      const res = await fetch('/api/state');
+      if (!res.ok) throw new Error(`Failed to load state: ${res.status}`);
+      store = await res.json();
+    }
 
     const ACTIVITY_CORPUS = [
       { name: 'Squat', units: ['reps'] },
@@ -1008,6 +1110,12 @@ Keys 1–5 are Mon–Fri. 4–5 exercises on strength days. 1 on aerobic days. 2
 ${level === 'beginner' ? 'Beginner: bodyweight and light dumbbells only, modest reps, include helpful notes.' : ''}
 Adapt exercises to the user context. Avoid anything that would aggravate mentioned injuries.
 
+INTERPRETING THE USER'S FOCUS:
+- If they mention a target duration (e.g. "45 minutes a day"), size the number and length of exercises on each day to roughly fit that budget — fewer/longer items for cardio and mind-body days, a rep/set count that fits the time for strength days.
+- If they describe specific times of day (e.g. "meditate in the morning, strength training in the evening"), order that day's exercises to match (morning items first, evening items after), and add "(morning)" or "(evening)" to each exercise's "note" so the split is visible — there's no separate session field, so the note is the only way to show it.
+- If their focus names a broad theme (e.g. "I want to do yoga"), use it to bias exercise selection on the days where it fits (aerobic and active-rest slots especially) rather than replacing the whole week's structure. The week should stay a mix of strength/cardio/rest, not become single-theme.
+- If their focus names one narrow, specific exercise (e.g. "calf stretches"), fold it in as a recurring item across the week (one slot per day, or part of warmup/cooldown) rather than making every exercise about it.
+
 ATTRIBUTE RULES — every exercise must use the correct attribute format:
 - Strength / resistance exercises (push-ups, squats, deadlifts, rows, curls, etc.): use "sets" (number) + "reps" (string like "8–12 reps"). Never use "duration" for these.
 - Cardio / aerobic (running, cycling, swimming, rowing, jump rope, walking, hiking, elliptical, stair climber, assault bike, etc.): use "duration" (string like "30 min" or "20 min"). Never use "sets"/"reps" for these.
@@ -1058,14 +1166,14 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
 
     function ensureWeeklySchedule() {
       const mondayStr = getWeekMonday();
-      const stored = JSON.parse(localStorage.getItem(WEEKLY_SCHEDULE_KEY) || 'null');
+      const stored = getState(WEEKLY_SCHEDULE_KEY);
       if (stored && stored.weekOf === mondayStr) return;
       const generated = generateWeekSchedule(mondayStr);
-      localStorage.setItem(WEEKLY_SCHEDULE_KEY, JSON.stringify(generated));
-      const prefs = JSON.parse(localStorage.getItem(HEALTH_PREFS_KEY) || '{}');
+      setState(WEEKLY_SCHEDULE_KEY, generated);
+      const prefs = getState(HEALTH_PREFS_KEY, {});
       if (prefs.apiKey && prefs.context) {
         generateAISchedule(mondayStr, prefs, prefs.apiKey).then(aiGen => {
-          localStorage.setItem(WEEKLY_SCHEDULE_KEY, JSON.stringify(aiGen));
+          setState(WEEKLY_SCHEDULE_KEY, aiGen);
           loadHealthSchedule();
           renderHealth();
           showToast('AI plan ready for this week');
@@ -1074,44 +1182,44 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
     }
 
     function getHealthExtra(dateStr) {
-      const all = JSON.parse(localStorage.getItem(HEALTH_EXTRA_KEY) || '{}');
+      const all = getState(HEALTH_EXTRA_KEY, {});
       return all[dateStr] || [];
     }
 
     function addHealthExtra(dateStr, ex) {
-      const all = JSON.parse(localStorage.getItem(HEALTH_EXTRA_KEY) || '{}');
+      const all = getState(HEALTH_EXTRA_KEY, {});
       if (!all[dateStr]) all[dateStr] = [];
       all[dateStr].push(ex);
-      localStorage.setItem(HEALTH_EXTRA_KEY, JSON.stringify(all));
+      setState(HEALTH_EXTRA_KEY, all);
     }
 
     function deleteHealthExtra(dateStr, exId) {
-      const all = JSON.parse(localStorage.getItem(HEALTH_EXTRA_KEY) || '{}');
+      const all = getState(HEALTH_EXTRA_KEY, {});
       if (!all[dateStr]) return;
       all[dateStr] = all[dateStr].filter(e => e.id !== exId);
-      localStorage.setItem(HEALTH_EXTRA_KEY, JSON.stringify(all));
+      setState(HEALTH_EXTRA_KEY, all);
     }
 
     function updateHealthExtra(dateStr, exId, updatedEx) {
-      const all = JSON.parse(localStorage.getItem(HEALTH_EXTRA_KEY) || '{}');
+      const all = getState(HEALTH_EXTRA_KEY, {});
       if (!all[dateStr]) return;
       const idx = all[dateStr].findIndex(e => e.id === exId);
       if (idx === -1) return;
       all[dateStr][idx] = updatedEx;
-      localStorage.setItem(HEALTH_EXTRA_KEY, JSON.stringify(all));
+      setState(HEALTH_EXTRA_KEY, all);
     }
 
     let healthSchedule = {};
 
     function loadHealthSchedule() {
-      const weekly = JSON.parse(localStorage.getItem(WEEKLY_SCHEDULE_KEY) || 'null');
+      const weekly = getState(WEEKLY_SCHEDULE_KEY);
       healthSchedule = weekly ? weekly.schedule : JSON.parse(JSON.stringify(DEFAULT_HEALTH_SCHEDULE));
     }
 
     function saveHealthSchedule() {
-      const stored = JSON.parse(localStorage.getItem(WEEKLY_SCHEDULE_KEY) || '{}');
+      const stored = getState(WEEKLY_SCHEDULE_KEY, {});
       stored.schedule = healthSchedule;
-      localStorage.setItem(WEEKLY_SCHEDULE_KEY, JSON.stringify(stored));
+      setState(WEEKLY_SCHEDULE_KEY, stored);
     }
 
     // ============ HEALTH CRUD ============
@@ -1152,6 +1260,9 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
     const SVG_TRASH = `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3,6 5,6 21,6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>`;
     const SVG_PLUS = `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
     const COG_SVG = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
+    document.getElementById('header-settings-btn').innerHTML = COG_SVG;
+    document.getElementById('header-settings-btn').addEventListener('click', () => openConfig());
+    const FLAME_SVG = `<svg viewBox="0 0 24 24" fill="#ffffff"><path d="M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67zM11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-.36 3.6-1.21 4.62-2.58.39 1.29.59 2.65.59 4.04 0 2.65-2.15 4.8-4.8 4.8z"/></svg>`;
 
     // ============ RENDER: HEALTH VIEW ============
     let healthViewDay = null;
@@ -1167,39 +1278,35 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
       const displayDate = new Date(today);
       displayDate.setDate(today.getDate() + (displayDow - todayDow));
       const displayDateStr = localDateStr(displayDate);
-      const displayDateLabel = displayDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
       const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-      const DAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+      const DAY_LETTERS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
       const DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
       const weekStripHtml = `
-        <div class="health-week-strip" id="health-week-strip">
+        <div class="day-strip" id="health-week-strip">
           ${DISPLAY_ORDER.map(d => {
             const isToday = d === todayDow;
             const isSelected = d === displayDow;
             const isWorkout = !healthSchedule[d].isRest;
-            let cls = 'health-week-day';
-            if (isToday) cls += ' today';
-            else if (isSelected) cls += ' selected';
-            else if (isWorkout) cls += ' workout';
-            return `<div class="${cls}" data-strip-day="${d}">${DAY_LETTERS[d]}</div>`;
+            const pillDate = new Date(today);
+            pillDate.setDate(today.getDate() + (d - todayDow));
+            const isPast = localDateStr(pillDate) < todayStr;
+            let cls = 'day-pill';
+            if (isSelected) cls += ' active';
+            else if (isToday) cls += ' is-today';
+            if (isPast) cls += ' past';
+            return `<div class="${cls}" data-strip-day="${d}">
+              <span class="dp-label">${DAY_LETTERS[d]}</span>
+              <span class="dp-num">${pillDate.getDate()}</span>
+              ${isWorkout ? '<span class="dp-dot"></span>' : ''}
+            </div>`;
           }).join('')}
         </div>
       `;
 
       const schedule = healthSchedule[displayDow];
       const isViewingToday = displayDow === todayDow;
-
-      const headerHtml = `
-        <div class="header" style="display:flex;justify-content:space-between;align-items:flex-start;">
-          <div>
-            <div style="font-size:13px;color:var(--text-tertiary);margin-bottom:2px;">${displayDateLabel}</div>
-            <div class="page-title">${DAY_NAMES[displayDow]}</div>
-          </div>
-          <button class="icon-btn" id="health-config-btn" aria-label="Settings">${COG_SVG}</button>
-        </div>
-      `;
 
       const extras = getHealthExtra(displayDateStr);
 
@@ -1239,7 +1346,6 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
           const d = e.target.closest('[data-strip-day]');
           if (d) renderHealth(parseInt(d.dataset.stripDay));
         });
-        view.querySelector('#health-config-btn').addEventListener('click', () => openConfig());
         view.querySelector('#log-activity-btn').addEventListener('click', () => openLogSheet(displayDateStr));
         view.querySelectorAll('[data-edit-extra]').forEach(btn => {
           btn.addEventListener('click', () => {
@@ -1273,7 +1379,6 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
 
       if (schedule.isRest) {
         view.innerHTML = `
-          ${headerHtml}
           ${weekStripHtml}
           <div class="card health-rest-card">
             <div class="health-rest-title">Rest Day</div>
@@ -1289,10 +1394,10 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
         return;
       }
 
-      const hs = JSON.parse(localStorage.getItem(HEALTH_STATE_KEY) || '{}');
+      const hs = getState(HEALTH_STATE_KEY, {});
       const exercises = schedule.exercises || [];
-      const completedCount = exercises.filter(ex => hs[ex.id] === displayDateStr).length;
-      const totalCount = exercises.length;
+      const completedCount = exercises.filter(ex => hs[ex.id] === displayDateStr).length + extras.length;
+      const totalCount = exercises.length + extras.length;
       const allDone = totalCount > 0 && completedCount === totalCount;
       const percent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
@@ -1330,7 +1435,6 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
       }).join('');
 
       view.innerHTML = `
-        ${headerHtml}
         ${weekStripHtml}
         <div class="card" style="margin-bottom:20px;">
           <div class="card-label">${schedule.type || 'Workout'}</div>
@@ -1356,9 +1460,9 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
         item.querySelector('.task-checkbox').addEventListener('click', (e) => {
           e.stopPropagation();
           const exId = item.dataset.exerciseId;
-          const hs2 = JSON.parse(localStorage.getItem(HEALTH_STATE_KEY) || '{}');
+          const hs2 = getState(HEALTH_STATE_KEY, {});
           if (hs2[exId] === displayDateStr) { delete hs2[exId]; } else { hs2[exId] = displayDateStr; }
-          localStorage.setItem(HEALTH_STATE_KEY, JSON.stringify(hs2));
+          setState(HEALTH_STATE_KEY, hs2);
           renderHealth();
         });
       });
@@ -1371,7 +1475,7 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
       const view = document.getElementById('view-progress');
       const today = new Date();
       const todayStr = localDateStr(today);
-      const hs = JSON.parse(localStorage.getItem(HEALTH_STATE_KEY) || '{}');
+      const hs = getState(HEALTH_STATE_KEY, {});
 
       function dayStatus(d) {
         const dateStr = localDateStr(d);
@@ -1398,6 +1502,19 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
         return `<div style="width:${size}px;height:${size}px;border-radius:50%;flex-shrink:0;${style}${ring}"></div>`;
       }
 
+      // Bold circle with the date number inside — used for week/month views.
+      function bigDot(d, size) {
+        const ds = localDateStr(d);
+        const st = dayStatus(d);
+        const isToday = ds === todayStr;
+        const style = st === 'complete' ? `background:var(--success);color:#fff;`
+          : st === 'rest'   ? `background:var(--border-mid);color:#fff;`
+          : st === 'missed' ? `background:transparent;border:1.5px solid var(--border-mid);color:var(--text-tertiary);`
+          :                   `background:transparent;border:1px solid var(--border);color:var(--text-muted);opacity:0.4;`;
+        const ring = isToday ? `box-shadow:0 0 0 2px var(--accent);` : '';
+        return `<div style="width:${size}px;height:${size}px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:${Math.round(size * 0.42)}px;font-weight:700;${style}${ring}">${d.getDate()}</div>`;
+      }
+
       function buildWeekView() {
         const dow = today.getDay();
         const mon = new Date(today); mon.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1));
@@ -1406,13 +1523,12 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
         for (let i = 0; i < 7; i++) {
           const d = new Date(mon); d.setDate(mon.getDate() + i);
           const isToday = localDateStr(d) === todayStr;
-          cols += `<div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;">
+          cols += `<div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex:1;">
             <div style="font-size:11px;font-weight:${isToday ? '700' : '500'};color:${isToday ? 'var(--text-primary)' : 'var(--text-tertiary)'};">${LABELS[i]}</div>
-            ${dot(d, 24)}
-            <div style="font-size:10px;color:${isToday ? 'var(--accent)' : 'var(--text-tertiary)'};font-weight:${isToday ? '700' : '400'};">${d.getDate()}</div>
+            ${bigDot(d, 36)}
           </div>`;
         }
-        return `<div style="display:flex;gap:4px;padding:8px 0 12px;">${cols}</div>`;
+        return `<div style="display:flex;gap:6px;padding:8px 0 12px;">${cols}</div>`;
       }
 
       function buildMonthView() {
@@ -1428,15 +1544,11 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
         for (let i = 0; i < offset; i++) cells += `<div></div>`;
         for (let day = 1; day <= days; day++) {
           const d = new Date(yr, mo, day);
-          const isToday = localDateStr(d) === todayStr;
-          cells += `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;padding-bottom:4px;">
-            ${dot(d, 16)}
-            <div style="font-size:8px;color:${isToday ? 'var(--accent)' : 'var(--text-muted)'};font-weight:${isToday ? '700' : '400'};">${day}</div>
-          </div>`;
+          cells += `<div style="display:flex;justify-content:center;padding-bottom:6px;">${bigDot(d, 30)}</div>`;
         }
         return `
           <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;">${hdr}</div>
-          <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px 2px;margin-bottom:8px;">${cells}</div>
+          <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px 2px;margin-bottom:8px;">${cells}</div>
         `;
       }
 
@@ -1511,19 +1623,20 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
           <div style="font-size:13px;color:var(--text-tertiary);margin-bottom:2px;">${today.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
           <div class="page-title">Progress</div>
         </div>
+        <div class="streak-hero">
+          <div>
+            <div class="streak-hero-num">${streak}</div>
+            <div class="streak-hero-label">day streak!</div>
+          </div>
+          <div class="streak-hero-icon">${FLAME_SVG}</div>
+        </div>
         <div class="card">
           <div style="display:flex;gap:6px;margin-bottom:16px;">${periodBtns}</div>
           ${calendarView}
           ${legend}
-          <div style="display:flex;gap:10px;margin-top:4px;">
-            <div style="flex:1;text-align:center;padding:12px 8px;background:var(--surface-hover);border-radius:var(--radius-sm);">
-              <div style="font-size:26px;font-weight:700;color:var(--accent);">${streak}</div>
-              <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">day streak</div>
-            </div>
-            <div style="flex:1;text-align:center;padding:12px 8px;background:var(--surface-hover);border-radius:var(--radius-sm);">
-              <div style="font-size:26px;font-weight:700;color:var(--accent);">${activeDays}</div>
-              <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">active days this month</div>
-            </div>
+          <div style="text-align:center;padding:12px 8px;background:var(--surface-hover);border-radius:var(--radius-sm);margin-top:4px;">
+            <div style="font-size:26px;font-weight:700;color:var(--accent);">${activeDays}</div>
+            <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">active days this month</div>
           </div>
         </div>
       `;
@@ -1639,7 +1752,7 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
           if (!byName[ex.name]) byName[ex.name] = { name: ex.name, units: ['reps'], count: 0, lastUsed: null };
         });
       });
-      const allExtras = JSON.parse(localStorage.getItem(HEALTH_EXTRA_KEY) || '{}');
+      const allExtras = getState(HEALTH_EXTRA_KEY, {});
       Object.keys(allExtras).sort().reverse().forEach(date => {
         (allExtras[date] || []).forEach(ex => {
           if (!byName[ex.name]) byName[ex.name] = { name: ex.name, units: ['reps'], count: 0, lastUsed: null };
@@ -1834,16 +1947,14 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
 
     function renderConfig() {
       const view = document.getElementById('view-config');
-      const prefs = JSON.parse(localStorage.getItem(HEALTH_PREFS_KEY) || '{}');
+      const prefs = getState(HEALTH_PREFS_KEY, {});
       const hasKey = !!(prefs.apiKey);
+      const hasExistingPlan = !!(getState(WEEKLY_SCHEDULE_KEY, {}).aiGenerated);
 
       view.innerHTML = `
-        <div class="header" style="display:flex;align-items:flex-start;gap:8px;margin-bottom:20px;">
-          <button class="back-btn" id="config-back-btn" aria-label="Back">${SVG_BACK}</button>
-          <div>
-            <div class="greeting">${APP_NAME}</div>
-            <div class="page-title">Settings</div>
-          </div>
+        <div class="header" style="display:flex;align-items:center;gap:8px;margin-bottom:20px;">
+          <button class="back-btn" id="config-back-btn" aria-label="Back" style="margin-top:0;">${SVG_BACK}</button>
+          <div class="page-title">Settings</div>
         </div>
 
         <div class="section-header" style="margin-bottom:6px;">Your Focus</div>
@@ -1863,15 +1974,17 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
           }).join('')}
         </div>
 
-        <button class="btn btn-primary btn-block" id="prefs-save-btn">Regenerate Plan</button>
+        <button class="btn btn-primary btn-block" id="prefs-save-btn">${hasExistingPlan ? 'Regenerate Plan' : 'Generate Plan'}</button>
         <div id="prefs-status" style="text-align:center;font-size:12px;color:var(--text-secondary);margin-top:10px;min-height:18px;"></div>
 
         <details class="api-key-details" id="api-key-details">
           <summary>
             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
             Claude API key
-            ${hasKey ? `<span class="api-key-connected">● Connected</span>` : `<span style="font-size:11px;color:var(--text-muted);">Not connected</span>`}
-            <span class="api-key-chevron">▾</span>
+            ${hasKey
+              ? `<span class="api-key-badge connected"><span class="api-key-badge-dot"></span>Connected</span>`
+              : `<span class="api-key-badge disconnected"><span class="api-key-badge-dot"></span>Not connected</span>`}
+            <span class="api-key-chevron"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="6,9 12,15 18,9"/></svg></span>
           </summary>
           <div class="api-key-panel">
             <div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px;line-height:1.5;">
@@ -1904,19 +2017,24 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
 
       document.getElementById('prefs-save-btn').addEventListener('click', async () => {
         const context = document.getElementById('prefs-context').value.trim();
-        const saved = JSON.parse(localStorage.getItem(HEALTH_PREFS_KEY) || '{}');
+        const saved = getState(HEALTH_PREFS_KEY, {});
         const newPrefs = { ...saved, context, fitnessLevel: currentLevel };
-        localStorage.setItem(HEALTH_PREFS_KEY, JSON.stringify(newPrefs));
+        setState(HEALTH_PREFS_KEY, newPrefs);
         const status = document.getElementById('prefs-status');
-        status.textContent = newPrefs.apiKey && context ? 'Generating AI plan…' : 'Regenerating plan…';
+        const isAiRequest = !!(newPrefs.apiKey && context);
+        status.textContent = isAiRequest
+          ? (hasExistingPlan ? 'Regenerating AI plan…' : 'Generating AI plan…')
+          : (hasExistingPlan ? 'Regenerating plan…' : 'Generating plan…');
         const mondayStr = getWeekMonday();
         try {
-          const generated = newPrefs.apiKey && context
+          const generated = isAiRequest
             ? await generateAISchedule(mondayStr, newPrefs, newPrefs.apiKey)
             : generateWeekSchedule(mondayStr);
-          localStorage.setItem(WEEKLY_SCHEDULE_KEY, JSON.stringify(generated));
+          setState(WEEKLY_SCHEDULE_KEY, generated);
           loadHealthSchedule();
-          status.textContent = generated.aiGenerated ? 'AI plan ready.' : 'Plan regenerated.';
+          status.textContent = generated.aiGenerated
+            ? (hasExistingPlan ? 'AI plan regenerated.' : 'AI plan ready.')
+            : (hasExistingPlan ? 'Plan regenerated.' : 'Plan generated.');
           setTimeout(() => { status.textContent = ''; }, 2500);
         } catch (err) {
           status.textContent = `Error: ${err.message}`;
@@ -1926,18 +2044,18 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
       document.getElementById('prefs-key-save')?.addEventListener('click', () => {
         const apiKey = document.getElementById('prefs-api-key').value.trim();
         if (!apiKey) return;
-        const saved = JSON.parse(localStorage.getItem(HEALTH_PREFS_KEY) || '{}');
+        const saved = getState(HEALTH_PREFS_KEY, {});
         saved.apiKey = apiKey;
-        localStorage.setItem(HEALTH_PREFS_KEY, JSON.stringify(saved));
+        setState(HEALTH_PREFS_KEY, saved);
         renderConfig();
         showToast('API key saved');
       });
 
       document.getElementById('prefs-key-remove')?.addEventListener('click', () => {
         if (!confirm('Remove the API key? Future plans will use the built-in exercise pool.')) return;
-        const saved = JSON.parse(localStorage.getItem(HEALTH_PREFS_KEY) || '{}');
+        const saved = getState(HEALTH_PREFS_KEY, {});
         delete saved.apiKey;
-        localStorage.setItem(HEALTH_PREFS_KEY, JSON.stringify(saved));
+        setState(HEALTH_PREFS_KEY, saved);
         renderConfig();
       });
 
@@ -1963,10 +2081,28 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
     });
 
     // ============ INIT ============
-    initOnboarding();
-    ensureWeeklySchedule();
-    loadHealthSchedule();
-    renderHealth();
+    async function boot() {
+      const bootScreen = document.getElementById('boot-screen');
+      const bootStatus = document.getElementById('boot-status');
+      const bootRetry = document.getElementById('boot-retry-btn');
+      try {
+        await loadState();
+        bootScreen.classList.add('hidden');
+        initOnboarding();
+        ensureWeeklySchedule();
+        loadHealthSchedule();
+        renderHealth();
+      } catch (err) {
+        bootStatus.textContent = 'Could not reach the server. Check your connection and try again.';
+        bootRetry.style.display = 'inline-flex';
+      }
+    }
+    document.getElementById('boot-retry-btn').addEventListener('click', () => {
+      document.getElementById('boot-status').textContent = 'Connecting…';
+      document.getElementById('boot-retry-btn').style.display = 'none';
+      boot();
+    });
+    boot();
   </script>
 </body>
 </html>

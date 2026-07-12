@@ -1,0 +1,9 @@
+services:
+  acmon:
+    build: .
+    container_name: acmon
+    restart: unless-stopped
+    ports:
+      - "5054:5000"
+    volumes:
+      - ./data:/app/data
