@@ -362,6 +362,7 @@
     }
     .api-key-badge.connected { background: var(--success-dim); color: var(--success); }
     .api-key-badge.disconnected { background: var(--danger-dim); color: var(--danger); }
+    .api-key-badge.warning { background: var(--warning-dim); color: var(--warning); }
     .api-key-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
     .api-key-chevron { margin-left: auto; flex-shrink: 0; display: flex; transition: transform 0.2s; color: var(--text-secondary); }
     .api-key-details[open] .api-key-chevron { transform: rotate(180deg); }
@@ -397,6 +398,20 @@
     .form-input::placeholder { color: var(--text-tertiary); }
     .form-actions { display: flex; gap: 10px; margin-top: 4px; }
     .form-actions .btn { flex: 1; }
+
+    .switch { position: relative; display: inline-block; width: 51px; height: 31px; flex-shrink: 0; }
+    .switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; z-index: 1; }
+    .switch-track {
+      position: absolute; inset: 0; background: var(--border-mid); border-radius: 999px;
+      transition: background 0.2s ease;
+    }
+    .switch-track::before {
+      content: ''; position: absolute; width: 27px; height: 27px; left: 2px; top: 2px;
+      background: #fff; border-radius: 50%; transition: transform 0.2s ease;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .switch input:checked + .switch-track { background: var(--accent); }
+    .switch input:checked + .switch-track::before { transform: translateX(20px); }
 
     .config-action-btn {
       width: 30px; height: 30px; background: none; border: none;
@@ -663,7 +678,7 @@
 
   <script>
     // ============ VERSION ============
-    const APP_VERSION = '3.34';
+    const APP_VERSION = '3.43';
     const APP_NAME = 'Acmon';
     document.getElementById('app-footer').innerHTML = `${APP_NAME} v${APP_VERSION} &copy; Setu Kathawate`;
     document.getElementById('app-name-display').textContent = APP_NAME;
@@ -1112,6 +1127,34 @@
       return { weekNumber, totalWeeks, isActive: weekNumber >= 1 && weekNumber <= totalWeeks, isPastEnd: weekNumber > totalWeeks };
     }
 
+    // Forces user-picked rest days to actually be rest, regardless of what a generator
+    // produced — the AI is told about these too (so it can plan the rest of the week
+    // sensibly), but compliance is never assumed. Applied by both generateWeekSchedule
+    // and generateAISchedule so it holds whether or not the user has an API key.
+    function applyRestDayOverrides(schedule, prefs) {
+      const restDays = prefs.restDays || [];
+      for (const d of restDays) {
+        schedule[d] = { isRest: true, note: 'Rest day — you set this day off in Settings.' };
+      }
+      return schedule;
+    }
+
+    // User-authored daily habits (Settings) — deterministic, not AI-inferred. Applied AFTER
+    // rest-day overrides so a habit still shows up on a rest day. Each day gets its own copy
+    // of the exercise id (`${habit.id}-d${d}`) rather than one shared id across all 7 days —
+    // otherwise checking a habit off on one day would silently un-check it on another, since
+    // health-state tracks one completion date per exercise id.
+    function applyDailyHabits(schedule, prefs) {
+      const habits = prefs.dailyHabits || [];
+      if (habits.length === 0) return schedule;
+      for (let d = 0; d <= 6; d++) {
+        const day = schedule[d];
+        const dayHabits = habits.map(h => ({ ...h, id: `${h.id}-d${d}` }));
+        day.exercises = day.isRest ? dayHabits : [...(day.exercises || []), ...dayHabits];
+      }
+      return schedule;
+    }
+
     function weekRng(seed) {
       let s = seed >>> 0;
       return function() {
@@ -1122,7 +1165,7 @@
       };
     }
 
-    function generateWeekSchedule(mondayStr) {
+    function generateWeekSchedule(mondayStr, prefs = {}) {
       const seed = parseInt(mondayStr.replace(/-/g, ''), 10);
       const rng = weekRng(seed);
       function pick(arr) { return arr[Math.floor(rng() * arr.length)]; }
@@ -1155,18 +1198,17 @@
         { ...pick(WEEK_POOLS.friLight), id: 'gen-fri-2' },
         { ...pick(WEEK_POOLS.friFinisher), id: 'gen-fri-3' },
       ];
-      return {
-        weekOf: mondayStr,
-        schedule: {
-          0: JSON.parse(JSON.stringify(DEFAULT_HEALTH_SCHEDULE[0])),
-          1: { type: 'Strength Training — Upper Body', exercises: upper },
-          2: { type: 'Aerobic Activity', exercises: [{ id: 'gen-tue-0', name: aerobicPair[0].name, duration: aerobicPair[0].duration }] },
-          3: { type: 'Strength Training — Lower Body', exercises: lower },
-          4: { type: 'Aerobic Activity', exercises: [{ id: 'gen-thu-0', name: aerobicPair[1].name, duration: aerobicPair[1].duration }] },
-          5: { type: 'Active Rest', exercises: fri },
-          6: JSON.parse(JSON.stringify(DEFAULT_HEALTH_SCHEDULE[6])),
-        }
-      };
+      const schedule = applyRestDayOverrides({
+        0: JSON.parse(JSON.stringify(DEFAULT_HEALTH_SCHEDULE[0])),
+        1: { type: 'Strength Training — Upper Body', exercises: upper },
+        2: { type: 'Aerobic Activity', exercises: [{ id: 'gen-tue-0', name: aerobicPair[0].name, duration: aerobicPair[0].duration }] },
+        3: { type: 'Strength Training — Lower Body', exercises: lower },
+        4: { type: 'Aerobic Activity', exercises: [{ id: 'gen-thu-0', name: aerobicPair[1].name, duration: aerobicPair[1].duration }] },
+        5: { type: 'Active Rest', exercises: fri },
+        6: JSON.parse(JSON.stringify(DEFAULT_HEALTH_SCHEDULE[6])),
+      }, prefs);
+      applyDailyHabits(schedule, prefs);
+      return { weekOf: mondayStr, schedule };
     }
 
     async function generateAISchedule(mondayStr, prefs, apiKey) {
@@ -1175,10 +1217,18 @@
       const planWeekLine = (planWeek && planWeek.isActive)
         ? `\nThis is week ${planWeek.weekNumber} of a ${planWeek.totalWeeks}-week plan the user set for themselves.${planWeek.weekNumber === planWeek.totalWeeks ? ' This is the FINAL week — taper: reduce volume/intensity roughly 30-50% for whatever the focus names, to wind down safely rather than stopping abruptly.' : ''}`
         : '';
+      const restDayNames = (prefs.restDays || []).map(d => ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d]);
+      const restDayLine = restDayNames.length > 0
+        ? `\nThe user has set these days off from real workouts: ${restDayNames.join(', ')}. Give them {"isRest": true, "note": "..."} — no workout exercises — and plan the rest of the week around that (don't assume consecutive non-rest days if that's no longer true). The app enforces this regardless of what you return, so don't worry about it further — just don't put a real workout there.`
+        : '';
+      const dailyHabitNames = (prefs.dailyHabits || []).map(h => h.name);
+      const dailyHabitsLine = dailyHabitNames.length > 0
+        ? `\nThe user has these daily habits configured already — they appear on every single day automatically, rest days included, and the app injects them itself: ${dailyHabitNames.join(', ')}. Do NOT include these same items again in any day's own "exercises" list — build each day's real workout around them instead of repeating them.`
+        : '';
       const prompt = `You are a personal fitness coach. Create a weekly workout schedule.
 
 User context: "${prefs.context}"
-Fitness level: ${level}${planWeekLine}
+Fitness level: ${level}${planWeekLine}${restDayLine}${dailyHabitsLine}
 
 Return ONLY a JSON object (no markdown, no explanation):
 {
@@ -1186,17 +1236,23 @@ Return ONLY a JSON object (no markdown, no explanation):
   "2": {"type": "Aerobic Activity", "exercises": [{"name": "Brisk walk", "duration": "30 min"}]},
   "3": {"type": "Strength Training — Lower Body", "exercises": [...]},
   "4": {"type": "Aerobic Activity", "exercises": [...]},
-  "5": {"type": "Active Rest", "exercises": [...]}
+  "5": {"type": "Active Rest", "exercises": [...]},
+  "6": {"type": "Long Ride", "exercises": [{"name": "Endurance ride", "duration": "90 min"}]},
+  "0": {"isRest": true, "note": "Full rest — recovery from the week."}
 }
 
-Keys 1–5 are Mon–Fri. 4–5 exercises on strength days. 1 on aerobic days. 2–3 on active rest.
+Keys are day-of-week numbers — 1–5 are Mon–Fri, 6 is Saturday, 0 is Sunday. All seven are required.
+DEFAULT for Mon–Fri, when the user hasn't specified a day-by-day structure: rotate strength/aerobic/strength/aerobic/active-rest (4–5 exercises on strength days, 1 on aerobic days, 2–3 on active rest). This default exists only so a vague or short Focus still produces a balanced week — it is NOT a constraint on the user.
+Sat and Sun are yours to decide based on the user's context — a long endurance session, full rest, light mobility, or anything else that actually fits what they described.
+If a day should be a true rest day with no real workout, use {"isRest": true, "note": "..."} — that's the only way it's tracked as rest rather than a missed workout.
 ${level === 'beginner' ? 'Beginner: bodyweight and light dumbbells only, modest reps, include helpful notes.' : ''}
 Adapt exercises to the user context. Avoid anything that would aggravate mentioned injuries.
 
 INTERPRETING THE USER'S FOCUS:
+- If they specify which day(s) of the week should get which type of training (e.g. "strength on Monday, Tuesday, Thursday, Friday, and Sunday", "Wednesday and Saturday are rest", "leg day on Thursdays"), honor that exactly — assign each named day the type they asked for, in place of the Mon–Fri default above. This overrides the default rotation; the default only fills in days the user left unspecified.
 - If they mention a target duration (e.g. "45 minutes a day"), size the number and length of exercises on each day to roughly fit that budget — fewer/longer items for cardio and mind-body days, a rep/set count that fits the time for strength days.
 - If they describe specific times of day (e.g. "meditate in the morning, strength training in the evening"), order that day's exercises to match (morning items first, evening items after), and add "(morning)" or "(evening)" to each exercise's "note" so the split is visible — there's no separate session field, so the note is the only way to show it.
-- If their focus names a broad theme (e.g. "I want to do yoga"), use it to bias exercise selection on the days where it fits (aerobic and active-rest slots especially) rather than replacing the whole week's structure. The week should stay a mix of strength/cardio/rest, not become single-theme.
+- If their focus names a broad theme with no day-specific breakdown (e.g. "I want to do yoga"), use it to bias exercise selection on the days where it fits (aerobic and active-rest slots especially) rather than replacing the whole week's structure — the week should stay a mix of strength/cardio/rest, not become single-theme, unless they explicitly asked for that.
 - If their focus names one narrow, specific exercise (e.g. "calf stretches"), fold it in as a recurring item across the week (one slot per day, or part of warmup/cooldown) rather than making every exercise about it.
 
 ATTRIBUTE RULES — every exercise must use the correct attribute format:
@@ -1227,23 +1283,32 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
       let parsed;
       try { parsed = JSON.parse(raw); }
       catch { throw new Error('Plan generation failed — try shortening your focus description and regenerating.'); }
-      const schedule = {
-        0: JSON.parse(JSON.stringify(DEFAULT_HEALTH_SCHEDULE[0])),
-        6: JSON.parse(JSON.stringify(DEFAULT_HEALTH_SCHEDULE[6])),
-      };
+      const schedule = {};
       for (const [day, dayData] of Object.entries(parsed)) {
-        const d = parseInt(day);
-        schedule[d] = {
-          type: dayData.type,
-          exercises: (dayData.exercises || []).map((ex, i) => ({
-            id: `ai-${d}-${i}`,
-            name: ex.name,
-            ...(ex.sets ? { sets: ex.sets, reps: ex.reps || '10 reps' } : {}),
-            ...(ex.duration ? { duration: ex.duration } : {}),
-            ...(ex.note ? { note: ex.note } : {}),
-          })),
-        };
+        const d = parseInt(day, 10);
+        if (Number.isNaN(d) || d < 0 || d > 6) continue;
+        schedule[d] = dayData.isRest
+          ? { isRest: true, note: dayData.note || 'Rest day.' }
+          : {
+              type: dayData.type,
+              exercises: (dayData.exercises || []).map((ex, i) => ({
+                id: `ai-${d}-${i}`,
+                name: ex.name,
+                ...(ex.sets ? { sets: ex.sets, reps: ex.reps || '10 reps' } : {}),
+                ...(ex.duration ? { duration: ex.duration } : {}),
+                ...(ex.note ? { note: ex.note } : {}),
+              })),
+            };
       }
+      // Defensive: if the model dropped a day (all 7 are requested, but nothing guarantees
+      // compliance), fall back to the safe rest default rather than leaving it undefined —
+      // renderHealth/Progress both index into every day of the week unconditionally.
+      for (let d = 0; d <= 6; d++) {
+        if (!schedule[d]) schedule[d] = JSON.parse(JSON.stringify(DEFAULT_HEALTH_SCHEDULE[d]));
+      }
+      applyRestDayOverrides(schedule, prefs);
+      applyDailyHabits(schedule, prefs);
+
       return { weekOf: mondayStr, aiGenerated: true, schedule };
     }
 
@@ -1278,15 +1343,28 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
         showToast(`Your ${planWeek.totalWeeks}-week plan just ended`);
       }
 
-      const generated = generateWeekSchedule(mondayStr);
+      const generated = generateWeekSchedule(mondayStr, prefs);
       setState(WEEKLY_SCHEDULE_KEY, generated);
       if (prefs.apiKey && prefs.context) {
         generateAISchedule(mondayStr, prefs, prefs.apiKey).then(aiGen => {
           setState(WEEKLY_SCHEDULE_KEY, aiGen);
+          // Success proves the key/call works again — clear any earlier failure flag
+          // so the Settings badge and Plan-tab banner both stop nagging.
+          if (getState(HEALTH_PREFS_KEY, {}).aiError) {
+            setState(HEALTH_PREFS_KEY, { ...getState(HEALTH_PREFS_KEY, {}), aiError: null });
+          }
           loadHealthSchedule();
           renderHealth();
           showToast('AI plan ready for this week');
-        }).catch(err => console.warn('AI schedule failed, using static:', err.message));
+        }).catch(err => {
+          console.warn('AI schedule failed, using static:', err.message);
+          // Surfaced, not silent: this week is quietly running on the generic static plan
+          // instead of the user's AI-personalized one (e.g. an expired API key) — without
+          // this flag, that degrades invisibly. renderHealth() picks it up as a banner,
+          // renderConfig() as a badge on the Claude API key row.
+          setState(HEALTH_PREFS_KEY, { ...getState(HEALTH_PREFS_KEY, {}), aiError: err.message });
+          renderHealth();
+        });
       }
     }
 
@@ -1423,11 +1501,25 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
       const schedule = healthSchedule[displayDow];
       const isViewingToday = displayDow === todayDow;
 
-      const planWeekInfo = getPlanWeekInfo(getState(HEALTH_PREFS_KEY, {}), getWeekMonday());
+      const healthPrefs = getState(HEALTH_PREFS_KEY, {});
+      const planWeekInfo = getPlanWeekInfo(healthPrefs, getWeekMonday());
       const headerHtml = `
         <div class="header">
           <div class="page-title">Your Plan</div>
           ${planWeekInfo && planWeekInfo.isActive ? `<div style="font-size:12px;font-weight:600;color:var(--accent);margin-top:4px;">Week ${planWeekInfo.weekNumber} of ${planWeekInfo.totalWeeks}</div>` : ''}
+        </div>
+      `;
+
+      // Persistent (not a toast) — an AI generation failure quietly drops this week back
+      // to the generic static plan otherwise, with no visible sign anything's wrong.
+      // Stays up across app opens/navigations until a generation actually succeeds again.
+      const aiErrorBannerHtml = !healthPrefs.aiError ? '' : `
+        <div id="ai-error-banner" style="display:flex;align-items:center;gap:10px;background:var(--warning-dim);border:1px solid var(--warning);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:16px;cursor:pointer;">
+          <svg width="18" height="18" fill="none" stroke="var(--warning)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" style="flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:600;color:var(--text-primary);">AI plan couldn't be generated this week</div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">Showing the basic plan instead. Tap to check your Claude API key in Settings.</div>
+          </div>
         </div>
       `;
 
@@ -1498,43 +1590,20 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
           });
         });
         view.querySelector('#health-add-exercise')?.addEventListener('click', () => openExerciseSheet(displayDow));
-      }
-
-      if (schedule.isRest) {
-        view.innerHTML = `
-          ${headerHtml}
-          ${weekStripHtml}
-          <div class="card health-rest-card">
-            <div class="health-rest-title">Rest Day</div>
-            <div class="health-rest-desc">${schedule.note || ''}</div>
-            <div class="health-rest-tip">Gentle stretching</div>
-            <div class="health-rest-tip">A leisurely walk</div>
-            <div class="health-rest-tip">Or complete rest</div>
-          </div>
-          ${extrasHtml}
-          ${logBtnHtml}
-        `;
-        wireCommon();
-        return;
+        view.querySelectorAll('[data-exercise-id]').forEach(item => {
+          item.querySelector('.task-checkbox').addEventListener('click', (e) => {
+            e.stopPropagation();
+            const exId = item.dataset.exerciseId;
+            const hs2 = getState(HEALTH_STATE_KEY, {});
+            if (hs2[exId] === displayDateStr) { delete hs2[exId]; } else { hs2[exId] = displayDateStr; }
+            setState(HEALTH_STATE_KEY, hs2);
+            renderHealth();
+          });
+        });
       }
 
       const hs = getState(HEALTH_STATE_KEY, {});
       const exercises = schedule.exercises || [];
-      const completedCount = exercises.filter(ex => hs[ex.id] === displayDateStr).length + extras.length;
-      const totalCount = exercises.length + extras.length;
-      const allDone = totalCount > 0 && completedCount === totalCount;
-      const percent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
-
-      const progressHtml = allDone
-        ? `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-             <span style="font-size:24px;font-weight:700;color:var(--success);">All done!</span>
-             <svg width="22" height="22" fill="none" stroke="var(--success)" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20,6 9,17 4,12"/></svg>
-           </div>
-           <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">${isViewingToday ? 'Great work today.' : 'Completed.'}</div>`
-        : `<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px;">
-             <span style="font-size:24px;font-weight:700;color:var(--success);">${completedCount}/${totalCount}</span>
-             <span style="font-size:14px;color:var(--text-secondary);">exercises done</span>
-           </div>`;
 
       const exercisesHtml = exercises.map(ex => {
         const isDone = hs[ex.id] === displayDateStr;
@@ -1558,8 +1627,57 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
         `;
       }).join('');
 
+      if (schedule.isRest) {
+        const habitHtml = exercises.length === 0 ? '' : `
+          <div class="section-header" style="margin-top:20px;">Daily habit</div>
+          <div class="goal-card">
+            <div style="display:block;border-top:none;">
+              ${exercisesHtml}
+              <button class="add-row" id="health-add-exercise">${SVG_PLUS} Add exercise</button>
+            </div>
+          </div>
+        `;
+        view.innerHTML = `
+          ${headerHtml}
+          ${aiErrorBannerHtml}
+          ${weekStripHtml}
+          <div class="card health-rest-card">
+            <div class="health-rest-title">Rest Day</div>
+            <div class="health-rest-desc">${schedule.note || ''}</div>
+            <div class="health-rest-tip">Gentle stretching</div>
+            <div class="health-rest-tip">A leisurely walk</div>
+            <div class="health-rest-tip">Or complete rest</div>
+          </div>
+          ${habitHtml}
+          ${extrasHtml}
+          ${logBtnHtml}
+        `;
+        wireCommon();
+        document.getElementById('ai-error-banner')?.addEventListener('click', () => {
+          document.querySelector('.nav-item[data-view="config"]').click();
+        });
+        return;
+      }
+
+      const completedCount = exercises.filter(ex => hs[ex.id] === displayDateStr).length + extras.length;
+      const totalCount = exercises.length + extras.length;
+      const allDone = totalCount > 0 && completedCount === totalCount;
+      const percent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+      const progressHtml = allDone
+        ? `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+             <span style="font-size:24px;font-weight:700;color:var(--success);">All done!</span>
+             <svg width="22" height="22" fill="none" stroke="var(--success)" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20,6 9,17 4,12"/></svg>
+           </div>
+           <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">${isViewingToday ? 'Great work today.' : 'Completed.'}</div>`
+        : `<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px;">
+             <span style="font-size:24px;font-weight:700;color:var(--success);">${completedCount}/${totalCount}</span>
+             <span style="font-size:14px;color:var(--text-secondary);">exercises done</span>
+           </div>`;
+
       view.innerHTML = `
         ${headerHtml}
+        ${aiErrorBannerHtml}
         ${weekStripHtml}
         <div class="card" style="margin-bottom:20px;">
           <div class="card-label">${schedule.type || 'Workout'}</div>
@@ -1580,16 +1698,8 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
       `;
 
       wireCommon();
-
-      view.querySelectorAll('[data-exercise-id]').forEach(item => {
-        item.querySelector('.task-checkbox').addEventListener('click', (e) => {
-          e.stopPropagation();
-          const exId = item.dataset.exerciseId;
-          const hs2 = getState(HEALTH_STATE_KEY, {});
-          if (hs2[exId] === displayDateStr) { delete hs2[exId]; } else { hs2[exId] = displayDateStr; }
-          setState(HEALTH_STATE_KEY, hs2);
-          renderHealth();
-        });
+      document.getElementById('ai-error-banner')?.addEventListener('click', () => {
+        document.querySelector('.nav-item[data-view="config"]').click();
       });
     }
 
@@ -1608,7 +1718,10 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
         const dw = d.getDay();
         const sched = healthSchedule[dw];
         const extras = getHealthExtra(dateStr);
-        if (sched.isRest) return extras.length > 0 ? 'complete' : 'rest';
+        if (sched.isRest) {
+          const habitDone = (sched.exercises || []).some(ex => hs[ex.id] === dateStr);
+          return (extras.length > 0 || habitDone) ? 'complete' : 'rest';
+        }
         const exs = sched.exercises || [];
         if (extras.length > 0) return 'complete';
         if (exs.length === 0) return 'missed';
@@ -1703,7 +1816,11 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
         if (dateStr > todayStr) continue;
         const sched = healthSchedule[d.getDay()];
         const extras = getHealthExtra(dateStr);
-        if (sched.isRest) { if (extras.length > 0) streak++; continue; }
+        if (sched.isRest) {
+          const habitDone = (sched.exercises || []).some(ex => hs[ex.id] === dateStr);
+          if (extras.length > 0 || habitDone) streak++;
+          continue;
+        }
         const exs = sched.exercises || [];
         const done = exs.length > 0 && exs.every(ex => hs[ex.id] === dateStr);
         if (done || extras.length > 0) { streak++; } else { break; }
@@ -1716,9 +1833,11 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
         const sched = healthSchedule[d.getDay()];
         const extras = getHealthExtra(dateStr);
         if (extras.length > 0) { activeDays++; continue; }
-        if (!sched.isRest) {
-          const exs = sched.exercises || [];
-          if (exs.length > 0 && exs.every(ex => hs[ex.id] === dateStr)) activeDays++;
+        const exs = sched.exercises || [];
+        if (sched.isRest) {
+          if (exs.some(ex => hs[ex.id] === dateStr)) activeDays++;
+        } else if (exs.length > 0 && exs.every(ex => hs[ex.id] === dateStr)) {
+          activeDays++;
         }
       }
 
@@ -2058,6 +2177,7 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
       const view = document.getElementById('view-config');
       const prefs = getState(HEALTH_PREFS_KEY, {});
       const hasKey = !!(prefs.apiKey);
+      const hasAiError = !!(prefs.aiError);
       const hasExistingPlan = !!(getState(WEEKLY_SCHEDULE_KEY, {}).aiGenerated);
       const planHistory = getState(PLAN_HISTORY_KEY, []).slice().reverse();
 
@@ -2108,23 +2228,62 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
             <textarea class="form-input" id="prefs-context" rows="10" placeholder="e.g. Recovering from an IT band issue. Want to strengthen glutes. No high-impact cardio for now." style="resize:vertical;min-height:180px;">${escapeHtml(prefs.context || '')}</textarea>
           </div>
 
-          <label style="display:flex;align-items:center;gap:8px;margin-top:20px;cursor:pointer;user-select:none;">
-            <input type="checkbox" id="prefs-plan-duration-enabled" ${prefs.planStartDate ? 'checked' : ''} style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;">
+          <div class="section-header" style="margin-bottom:8px;margin-top:20px;">Rest Days</div>
+          <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:10px;line-height:1.5;">
+            Pick any days you always want off. These are enforced — no exercises, no matter what the plan would otherwise put there. Change anytime.
+          </div>
+          <div style="display:flex;gap:4px;margin-bottom:20px;">
+            ${['Su','Mo','Tu','We','Th','Fr','Sa'].map((label, d) => {
+              const active = (prefs.restDays || []).includes(d);
+              return `<button class="prefs-level-btn rest-day-btn${active ? ' active' : ''}" data-restday="${d}">${label}</button>`;
+            }).join('')}
+          </div>
+
+          <div class="section-header" style="margin-bottom:8px;">Daily Habits</div>
+          <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:10px;line-height:1.5;">
+            Add anything that should happen every day, rest days included — e.g. Meditation, calf stretches. These always appear; the AI is told about them so it doesn't suggest the same thing again as part of a day's workout.
+          </div>
+          <div class="goal-card" id="daily-habits-card" style="margin-bottom:20px;">
+            <div id="daily-habits-list"></div>
+            <div id="habit-add-form" style="display:none;padding:12px 16px;border-top:1px solid var(--border);">
+              <div class="form-field" style="margin-bottom:8px;">
+                <input class="form-input" id="habit-name" type="text" placeholder="e.g. Meditation" autocomplete="off">
+              </div>
+              <div style="display:flex;gap:6px;margin-bottom:8px;" id="habit-type-toggle">
+                <button class="selector-btn btn-sm selected" data-dur="0">Sets &amp; Reps</button>
+                <button class="selector-btn btn-sm" data-dur="1">Duration</button>
+              </div>
+              <div id="habit-setsreps-fields" style="display:flex;gap:8px;margin-bottom:8px;">
+                <input class="form-input" id="habit-sets" type="number" min="1" max="20" placeholder="Sets" value="2" style="flex:1;">
+                <input class="form-input" id="habit-reps" type="text" placeholder="e.g. 15 reps" style="flex:2;">
+              </div>
+              <input class="form-input" id="habit-duration" type="text" placeholder="e.g. 10 min" style="display:none;margin-bottom:8px;width:100%;">
+              <div style="display:flex;gap:8px;">
+                <button class="btn btn-ghost btn-sm" id="habit-cancel-btn" style="flex:1;">Cancel</button>
+                <button class="btn btn-primary btn-sm" id="habit-add-btn" style="flex:1;">Add habit</button>
+              </div>
+            </div>
+            <button class="add-row" id="habit-show-form-btn" style="width:100%;justify-content:center;border-top:1px solid var(--border);">${SVG_PLUS} Add a daily habit</button>
+          </div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:20px;">
             <span class="section-header" style="margin-bottom:0;">Plan Duration</span>
-          </label>
+            <label class="switch">
+              <input type="checkbox" id="prefs-plan-duration-enabled" ${prefs.planStartDate ? 'checked' : ''}>
+              <span class="switch-track"></span>
+            </label>
+          </div>
           <div id="plan-duration-fields" style="display:${prefs.planStartDate ? 'block' : 'none'};margin-top:10px;">
             <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:10px;line-height:1.5;">
               Set when your plan starts and how many weeks it runs. The AI is told which week you're in and tapers automatically on the final week.
             </div>
-            <div style="display:flex;gap:8px;margin-bottom:8px;">
-              <div class="form-field" style="flex:1;margin-bottom:0;">
-                <label class="form-label">Start date</label>
-                <input class="form-input" id="prefs-plan-start" type="date" value="${prefs.planStartDate || ''}">
-              </div>
-              <div class="form-field" style="flex:1;margin-bottom:0;">
-                <label class="form-label">Duration (weeks)</label>
-                <input class="form-input" id="prefs-plan-weeks" type="number" min="1" max="52" placeholder="e.g. 3" value="${prefs.planDurationWeeks || ''}">
-              </div>
+            <div class="form-field">
+              <label class="form-label">Start date</label>
+              <input class="form-input" id="prefs-plan-start" type="date" value="${prefs.planStartDate || ''}">
+            </div>
+            <div class="form-field" style="margin-bottom:0;">
+              <label class="form-label">Duration (weeks)</label>
+              <input class="form-input" id="prefs-plan-weeks" type="number" min="1" max="52" placeholder="e.g. 3" value="${prefs.planDurationWeeks || ''}">
             </div>
             ${planWeekStatusHtml}
           </div>
@@ -2147,19 +2306,19 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
             <summary>
               <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
               Claude API key
-              ${hasKey
-                ? `<span class="api-key-badge connected"><span class="api-key-badge-dot"></span>Connected</span>`
-                : `<span class="api-key-badge disconnected"><span class="api-key-badge-dot"></span>Not connected</span>`}
+              <span class="api-key-badge ${hasAiError ? 'warning' : (hasKey ? 'connected' : 'disconnected')}" id="api-key-badge"><span class="api-key-badge-dot"></span>${hasAiError ? 'Needs attention' : (hasKey ? 'Connected' : 'Not connected')}</span>
               <span class="api-key-chevron"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="6,9 12,15 18,9"/></svg></span>
             </summary>
             <div class="api-key-panel">
-              <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:10px;line-height:1.5;">
-                Required for AI-personalized plans. Stored only on this device — never sent anywhere except Anthropic's API.
+              <div id="api-key-status-line" style="font-size:12px;color:${hasAiError ? 'var(--danger)' : 'var(--text-tertiary)'};margin-bottom:10px;line-height:1.5;">
+                ${hasAiError
+                  ? `Last attempt failed: ${escapeHtml(prefs.aiError)}. This usually means the key expired or is invalid — update it below.`
+                  : `Required for AI-personalized plans. Stored only on this device — never sent anywhere except Anthropic's API.`}
               </div>
               <div class="form-field">
                 <input class="form-input" id="prefs-api-key" type="password" placeholder="sk-ant-api03-…" autocomplete="off">
               </div>
-              <div style="display:flex;gap:8px;margin-top:4px;">
+              <div style="display:flex;gap:8px;margin-top:4px;" id="api-key-buttons">
                 <button class="btn btn-ghost btn-sm" id="prefs-key-save" style="flex:1;">${hasKey ? 'Update key' : 'Save key'}</button>
                 ${hasKey ? `<button class="btn btn-ghost btn-sm" style="color:var(--danger);border-color:var(--danger);" id="prefs-key-remove">Remove</button>` : ''}
               </div>
@@ -2185,11 +2344,108 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
       `;
 
       let currentLevel = prefs.fitnessLevel || 'beginner';
-      view.querySelectorAll('.prefs-level-btn').forEach(btn => {
+      view.querySelectorAll('.prefs-level-btn:not(.rest-day-btn)').forEach(btn => {
         btn.addEventListener('click', () => {
           currentLevel = btn.dataset.level;
-          view.querySelectorAll('.prefs-level-btn').forEach(b => b.classList.toggle('active', b.dataset.level === currentLevel));
+          view.querySelectorAll('.prefs-level-btn:not(.rest-day-btn)').forEach(b => b.classList.toggle('active', b.dataset.level === currentLevel));
         });
+      });
+
+      let currentRestDays = new Set(prefs.restDays || []);
+      view.querySelectorAll('.rest-day-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const d = parseInt(btn.dataset.restday, 10);
+          if (currentRestDays.has(d)) currentRestDays.delete(d); else currentRestDays.add(d);
+          btn.classList.toggle('active', currentRestDays.has(d));
+        });
+      });
+
+      // Daily Habits persist immediately on add/remove — NOT staged until "Generate/Regenerate
+      // Plan" like Focus text/Fitness Level/Rest Days are. A delete that only updated local
+      // state and waited for the plan-generation button would silently revert on refresh —
+      // exactly the bug this fixes (reported: deleted a habit, refreshed, it came back).
+      let currentDailyHabits = (prefs.dailyHabits || []).map(h => ({ ...h }));
+      function persistDailyHabits() {
+        const saved = getState(HEALTH_PREFS_KEY, {});
+        setState(HEALTH_PREFS_KEY, { ...saved, dailyHabits: currentDailyHabits });
+      }
+      function renderHabitRows() {
+        const listEl = document.getElementById('daily-habits-list');
+        if (currentDailyHabits.length === 0) {
+          listEl.innerHTML = '';
+          return;
+        }
+        listEl.innerHTML = currentDailyHabits.map(h => {
+          const tag = h.duration ? h.duration : `${h.sets} × ${h.reps}`;
+          return `
+            <div class="task-item" data-habit-id="${h.id}">
+              <div class="task-content">
+                <div class="task-title">${escapeHtml(h.name)}</div>
+                <div class="task-meta"><span class="task-time">${escapeHtml(tag)}</span></div>
+              </div>
+              <button class="config-action-btn danger" data-habit-delete="${h.id}" aria-label="Remove">${SVG_TRASH}</button>
+            </div>
+          `;
+        }).join('');
+        listEl.querySelectorAll('[data-habit-delete]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            currentDailyHabits = currentDailyHabits.filter(h => h.id !== btn.dataset.habitDelete);
+            persistDailyHabits();
+            renderHabitRows();
+          });
+        });
+      }
+      renderHabitRows();
+
+      let habitIsDuration = false;
+      view.querySelectorAll('#habit-type-toggle .selector-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          view.querySelectorAll('#habit-type-toggle .selector-btn').forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          habitIsDuration = btn.dataset.dur === '1';
+          document.getElementById('habit-setsreps-fields').style.display = habitIsDuration ? 'none' : 'flex';
+          document.getElementById('habit-duration').style.display = habitIsDuration ? 'block' : 'none';
+        });
+      });
+
+      // Starts collapsed to a single CTA — showing the full add-form (name + type toggle +
+      // sets/reps or duration fields) at all times, even with zero habits, was too noisy.
+      function resetHabitForm() {
+        document.getElementById('habit-name').value = '';
+        document.getElementById('habit-sets').value = '2';
+        document.getElementById('habit-reps').value = '';
+        document.getElementById('habit-duration').value = '';
+        habitIsDuration = false;
+        view.querySelectorAll('#habit-type-toggle .selector-btn').forEach(b => b.classList.remove('selected'));
+        view.querySelector('#habit-type-toggle .selector-btn[data-dur="0"]').classList.add('selected');
+        document.getElementById('habit-setsreps-fields').style.display = 'flex';
+        document.getElementById('habit-duration').style.display = 'none';
+      }
+
+      document.getElementById('habit-show-form-btn').addEventListener('click', () => {
+        document.getElementById('habit-add-form').style.display = 'block';
+        document.getElementById('habit-show-form-btn').style.display = 'none';
+        document.getElementById('habit-name').focus();
+      });
+
+      document.getElementById('habit-cancel-btn').addEventListener('click', () => {
+        resetHabitForm();
+        document.getElementById('habit-add-form').style.display = 'none';
+        document.getElementById('habit-show-form-btn').style.display = 'flex';
+      });
+
+      document.getElementById('habit-add-btn').addEventListener('click', () => {
+        const name = document.getElementById('habit-name').value.trim();
+        if (!name) return;
+        const habit = habitIsDuration
+          ? { id: `dh-${Date.now()}`, name, duration: document.getElementById('habit-duration').value.trim() || '10 min' }
+          : { id: `dh-${Date.now()}`, name, sets: parseInt(document.getElementById('habit-sets').value) || 2, reps: document.getElementById('habit-reps').value.trim() || '10 reps' };
+        currentDailyHabits.push(habit);
+        persistDailyHabits();
+        renderHabitRows();
+        resetHabitForm();
+        document.getElementById('habit-add-form').style.display = 'none';
+        document.getElementById('habit-show-form-btn').style.display = 'flex';
       });
 
       document.getElementById('prefs-plan-duration-enabled').addEventListener('change', (e) => {
@@ -2211,6 +2467,8 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
         const planChanged = planStartDate !== (saved.planStartDate || null) || planDurationWeeks !== (saved.planDurationWeeks || null);
         const newPrefs = {
           ...saved, context, fitnessLevel: currentLevel, planStartDate, planDurationWeeks,
+          restDays: Array.from(currentRestDays).sort(),
+          dailyHabits: currentDailyHabits,
           planEndNotified: planChanged ? false : saved.planEndNotified,
         };
         setState(HEALTH_PREFS_KEY, newPrefs);
@@ -2223,35 +2481,72 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
         try {
           const generated = isAiRequest
             ? await generateAISchedule(mondayStr, newPrefs, newPrefs.apiKey)
-            : generateWeekSchedule(mondayStr);
+            : generateWeekSchedule(mondayStr, newPrefs);
           setState(WEEKLY_SCHEDULE_KEY, generated);
           loadHealthSchedule();
+          // A successful generation (even the non-AI static path, if the user removed
+          // their key) proves whatever previously failed no longer applies.
+          if (newPrefs.aiError) setState(HEALTH_PREFS_KEY, { ...getState(HEALTH_PREFS_KEY, {}), aiError: null });
+          refreshApiKeyPanel();
           status.textContent = generated.aiGenerated
             ? (hasExistingPlan ? 'AI plan regenerated.' : 'AI plan ready.')
             : (hasExistingPlan ? 'Plan regenerated.' : 'Plan generated.');
           setTimeout(() => { status.textContent = ''; }, 2500);
         } catch (err) {
           status.textContent = `Error: ${err.message}`;
+          if (isAiRequest) {
+            setState(HEALTH_PREFS_KEY, { ...getState(HEALTH_PREFS_KEY, {}), aiError: err.message });
+            refreshApiKeyPanel();
+          }
         }
       });
 
-      document.getElementById('prefs-key-save')?.addEventListener('click', () => {
-        const apiKey = document.getElementById('prefs-api-key').value.trim();
-        if (!apiKey) return;
-        const saved = getState(HEALTH_PREFS_KEY, {});
-        saved.apiKey = apiKey;
-        setState(HEALTH_PREFS_KEY, saved);
-        renderConfig();
-        showToast('API key saved');
-      });
+      // Saving/removing the key only patches the accordion's own badge/status/buttons —
+      // NOT a full renderConfig() — because a full re-render would reset any not-yet-saved
+      // edits elsewhere on this page (Focus text, Rest Days, Daily Habits) back to whatever
+      // is in storage, silently discarding them. See context.md for the incident this fixed.
+      function refreshApiKeyPanel() {
+        const p = getState(HEALTH_PREFS_KEY, {});
+        const hk = !!p.apiKey;
+        const he = !!p.aiError;
+        const badge = document.getElementById('api-key-badge');
+        badge.className = `api-key-badge ${he ? 'warning' : (hk ? 'connected' : 'disconnected')}`;
+        badge.innerHTML = `<span class="api-key-badge-dot"></span>${he ? 'Needs attention' : (hk ? 'Connected' : 'Not connected')}`;
+        const statusLine = document.getElementById('api-key-status-line');
+        statusLine.style.color = he ? 'var(--danger)' : 'var(--text-tertiary)';
+        statusLine.textContent = he
+          ? `Last attempt failed: ${p.aiError}. This usually means the key expired or is invalid — update it below.`
+          : `Required for AI-personalized plans. Stored only on this device — never sent anywhere except Anthropic's API.`;
+        document.getElementById('api-key-buttons').innerHTML = `
+          <button class="btn btn-ghost btn-sm" id="prefs-key-save" style="flex:1;">${hk ? 'Update key' : 'Save key'}</button>
+          ${hk ? `<button class="btn btn-ghost btn-sm" style="color:var(--danger);border-color:var(--danger);" id="prefs-key-remove">Remove</button>` : ''}
+        `;
+        wireApiKeyButtons();
+      }
 
-      document.getElementById('prefs-key-remove')?.addEventListener('click', () => {
-        if (!confirm('Remove the API key? Future plans will use the built-in exercise pool.')) return;
-        const saved = getState(HEALTH_PREFS_KEY, {});
-        delete saved.apiKey;
-        setState(HEALTH_PREFS_KEY, saved);
-        renderConfig();
-      });
+      function wireApiKeyButtons() {
+        document.getElementById('prefs-key-save')?.addEventListener('click', () => {
+          const apiKey = document.getElementById('prefs-api-key').value.trim();
+          if (!apiKey) return;
+          const saved = getState(HEALTH_PREFS_KEY, {});
+          saved.apiKey = apiKey;
+          saved.aiError = null;
+          setState(HEALTH_PREFS_KEY, saved);
+          document.getElementById('prefs-api-key').value = '';
+          refreshApiKeyPanel();
+          showToast('API key saved');
+        });
+
+        document.getElementById('prefs-key-remove')?.addEventListener('click', () => {
+          if (!confirm('Remove the API key? Future plans will use the built-in exercise pool.')) return;
+          const saved = getState(HEALTH_PREFS_KEY, {});
+          delete saved.apiKey;
+          saved.aiError = null;
+          setState(HEALTH_PREFS_KEY, saved);
+          refreshApiKeyPanel();
+        });
+      }
+      wireApiKeyButtons();
 
       document.getElementById('reset-all-btn').addEventListener('click', () => {
         document.getElementById('confirm-all-overlay').classList.add('visible');
