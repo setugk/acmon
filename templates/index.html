@@ -31,7 +31,6 @@
       --danger-dim: rgba(220, 38, 38, 0.08);
       --radius: 12px;
       --radius-sm: 8px;
-      --header-h: 52px;
     }
 
     body {
@@ -47,34 +46,19 @@
     .container {
       max-width: 480px;
       margin: 0 auto;
-      padding: 24px 20px;
-      padding-bottom: 100px;
+      padding: 8px 20px 120px;
     }
 
     /* Top App Header */
     #app-header {
-      position: sticky;
-      top: 0;
-      z-index: 60;
-      height: var(--header-h);
       max-width: 480px;
       margin: 0 auto;
-      padding: 0 20px;
+      padding: 20px 20px 28px;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid var(--border);
-      background: var(--bg);
     }
-    .app-header-title { font-size: 17px; font-weight: 700; letter-spacing: -0.4px; display: flex; align-items: center; gap: 8px; }
+    .app-header-title { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 700; letter-spacing: -0.4px; }
     .app-header-title svg { flex-shrink: 0; }
-    .app-version { font-size: 11px; font-weight: 400; color: var(--text-tertiary); }
-    .header-action {
-      background: none; border: none; padding: 6px; cursor: pointer;
-      color: var(--text-secondary); display: flex; align-items: center;
-      border-radius: var(--radius-sm); transition: background 0.15s ease, color 0.15s ease;
-    }
-    .header-action:hover { background: var(--surface-hover); color: var(--text-primary); }
 
     .header { margin-bottom: 24px; }
     .greeting { font-size: 14px; color: var(--text-secondary); margin-bottom: 4px; }
@@ -181,7 +165,7 @@
 
     .toast {
       position: fixed;
-      bottom: 90px;
+      bottom: 110px;
       left: 20px;
       right: 20px;
       max-width: 440px;
@@ -194,7 +178,7 @@
       font-size: 14px;
       text-align: center;
       z-index: 40;
-      transform: translateY(calc(100% + 90px));
+      transform: translateY(calc(100% + 110px));
       pointer-events: none;
       transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     }
@@ -203,34 +187,54 @@
 
     .bottom-nav {
       position: fixed;
-      bottom: 0; left: 0; right: 0;
-      max-width: 480px;
+      left: 16px; right: 16px;
+      bottom: calc(16px + env(safe-area-inset-bottom));
+      max-width: 448px;
       margin: 0 auto;
-      background: var(--surface);
-      border-top: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.72);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      backdrop-filter: blur(24px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      border-radius: 28px;
       display: flex;
-      padding-bottom: env(safe-area-inset-bottom);
+      padding: 6px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16), 0 1px 2px rgba(0, 0, 0, 0.05);
       z-index: 45;
+    }
+    .nav-indicator {
+      position: absolute;
+      top: 6px; bottom: 6px; left: 6px;
+      width: calc((100% - 12px) / 3);
+      background: var(--accent-dim);
+      border-radius: 20px;
+      transition: transform 0.42s cubic-bezier(0.32, 1.4, 0.6, 1);
+      z-index: 0;
     }
 
     .nav-item {
+      position: relative;
+      z-index: 1;
       flex: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 3px;
+      gap: 2px;
       background: none;
       border: none;
+      border-radius: 20px;
       color: var(--text-tertiary);
       cursor: pointer;
-      padding: 10px 4px;
+      padding: 8px 4px;
       transition: color 0.15s ease;
+      -webkit-tap-highlight-color: transparent;
+      outline: none;
+      user-select: none;
     }
 
     .nav-item.active { color: var(--accent); }
-    .nav-item svg { width: 22px; height: 22px; }
-    .nav-label { font-size: 11px; font-weight: 500; }
+    .nav-item svg { width: 21px; height: 21px; }
+    .nav-label { font-size: 10.5px; font-weight: 600; }
 
     .view { display: none; }
     .view.active { display: block; }
@@ -253,22 +257,6 @@
     }
 
     .icon-btn:hover { background: var(--surface-hover); }
-
-    .back-btn {
-      background: none;
-      border: none;
-      color: var(--text-tertiary);
-      cursor: pointer;
-      padding: 2px;
-      display: flex;
-      align-items: center;
-      border-radius: var(--radius-sm);
-      flex-shrink: 0;
-      margin-top: 5px;
-      transition: color 0.15s ease;
-    }
-
-    .back-btn:hover { color: var(--text-primary); }
 
     .confirm-overlay {
       position: fixed;
@@ -524,9 +512,8 @@
           </clipPath>
         </defs>
       </svg>
-      <span id="header-app-name">Acmon</span><span class="app-version" id="header-version"></span>
+      <span id="header-app-name">Acmon</span>
     </span>
-    <button class="header-action" id="header-settings-btn" aria-label="Settings"></button>
   </header>
 
   <!-- Boot / connection screen -->
@@ -660,11 +647,12 @@
   <div class="toast" id="toast"></div>
 
   <nav class="bottom-nav">
+    <div class="nav-indicator" id="nav-indicator"></div>
     <button class="nav-item active" data-view="health">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
       </svg>
-      <span class="nav-label">Health</span>
+      <span class="nav-label">Plan</span>
     </button>
     <button class="nav-item" data-view="progress">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -674,16 +662,19 @@
       </svg>
       <span class="nav-label">Progress</span>
     </button>
+    <button class="nav-item" data-view="config">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span class="nav-label">Settings</span>
+    </button>
   </nav>
 
   <script>
     // ============ VERSION ============
-    const APP_VERSION = '3.14';
+    const APP_VERSION = '3.24';
     const APP_NAME = 'Acmon';
     document.getElementById('app-footer').innerHTML = `${APP_NAME} v${APP_VERSION} &copy; Setu Kathawate`;
     document.getElementById('app-name-display').textContent = APP_NAME;
     document.getElementById('header-app-name').textContent = APP_NAME;
-    document.getElementById('header-version').textContent = `v${APP_VERSION}`;
 
     // ============ ONBOARDING ============
     const ONBOARDED_KEY = 'health-onboarded';
@@ -1319,13 +1310,9 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
     }
 
     // ============ SVG CONSTANTS ============
-    const SVG_BACK = `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15,18 9,12 15,6"/></svg>`;
     const SVG_EDIT = `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
     const SVG_TRASH = `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3,6 5,6 21,6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>`;
     const SVG_PLUS = `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
-    const COG_SVG = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
-    document.getElementById('header-settings-btn').innerHTML = COG_SVG;
-    document.getElementById('header-settings-btn').addEventListener('click', () => openConfig());
     const FLAME_SVG = `<svg viewBox="0 0 24 24" fill="#ffffff"><path d="M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67zM11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-.36 3.6-1.21 4.62-2.58.39 1.29.59 2.65.59 4.04 0 2.65-2.15 4.8-4.8 4.8z"/></svg>`;
 
     // ============ RENDER: HEALTH VIEW ============
@@ -1339,13 +1326,24 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
       const todayStr = localDateStr(today);
       const displayDow = healthViewDay !== null ? healthViewDay : todayDow;
 
-      const displayDate = new Date(today);
-      displayDate.setDate(today.getDate() + (displayDow - todayDow));
-      const displayDateStr = localDateStr(displayDate);
-
       const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
       const DAY_LETTERS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
       const DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
+
+      // Dates are computed from this week's Monday + position, not from today's day-of-week —
+      // `d - todayDow` breaks for Sunday (d=0), since Sunday is the last day of the displayed
+      // week (chronologically after Saturday) but day-of-week 0 is numerically the smallest.
+      const [my, mm, md] = getWeekMonday().split('-').map(Number);
+      const monday = new Date(my, mm - 1, md);
+      function dateForDow(dow) {
+        const pos = DISPLAY_ORDER.indexOf(dow);
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + pos);
+        return d;
+      }
+
+      const displayDate = dateForDow(displayDow);
+      const displayDateStr = localDateStr(displayDate);
 
       const weekStripHtml = `
         <div class="day-strip" id="health-week-strip">
@@ -1353,8 +1351,7 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
             const isToday = d === todayDow;
             const isSelected = d === displayDow;
             const isWorkout = !healthSchedule[d].isRest;
-            const pillDate = new Date(today);
-            pillDate.setDate(today.getDate() + (d - todayDow));
+            const pillDate = dateForDow(d);
             const isPast = localDateStr(pillDate) < todayStr;
             let cls = 'day-pill';
             if (isSelected) cls += ' active';
@@ -1371,6 +1368,12 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
 
       const schedule = healthSchedule[displayDow];
       const isViewingToday = displayDow === todayDow;
+
+      const headerHtml = `
+        <div class="header">
+          <div class="page-title">Your Plan</div>
+        </div>
+      `;
 
       const extras = getHealthExtra(displayDateStr);
 
@@ -1443,6 +1446,7 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
 
       if (schedule.isRest) {
         view.innerHTML = `
+          ${headerHtml}
           ${weekStripHtml}
           <div class="card health-rest-card">
             <div class="health-rest-title">Rest Day</div>
@@ -1499,6 +1503,7 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
       }).join('');
 
       view.innerHTML = `
+        ${headerHtml}
         ${weekStripHtml}
         <div class="card" style="margin-bottom:20px;">
           <div class="card-label">${schedule.type || 'Workout'}</div>
@@ -1684,7 +1689,6 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
 
       view.innerHTML = `
         <div class="header" style="margin-bottom:20px;">
-          <div style="font-size:13px;color:var(--text-tertiary);margin-bottom:2px;">${today.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
           <div class="page-title">Progress</div>
         </div>
         <div class="streak-hero">
@@ -1994,21 +1998,6 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
     }
 
     // ============ CONFIG VIEW ============
-    function openConfig() {
-      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-      document.getElementById('view-config').classList.add('active');
-      renderConfig();
-    }
-
-    function closeConfig() {
-      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-      document.getElementById('view-health').classList.add('active');
-      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-      document.querySelector('.nav-item[data-view="health"]').classList.add('active');
-      renderHealth();
-    }
-
     function renderConfig() {
       const view = document.getElementById('view-config');
       const prefs = getState(HEALTH_PREFS_KEY, {});
@@ -2045,8 +2034,7 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
       `).join('');
 
       view.innerHTML = `
-        <div class="header" style="display:flex;align-items:center;gap:8px;margin-bottom:20px;">
-          <button class="back-btn" id="config-back-btn" aria-label="Back" style="margin-top:0;">${SVG_BACK}</button>
+        <div class="header" style="margin-bottom:20px;">
           <div class="page-title">Settings</div>
         </div>
 
@@ -2110,8 +2098,6 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
         </div>
       `;
 
-      document.getElementById('config-back-btn').addEventListener('click', closeConfig);
-
       let currentLevel = prefs.fitnessLevel || 'beginner';
       view.querySelectorAll('.prefs-level-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -2170,20 +2156,77 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
     }
 
     // ============ NAVIGATION ============
-    document.querySelectorAll('.nav-item').forEach(item => {
+    const navItems = Array.from(document.querySelectorAll('.nav-item'));
+    const navIndicator = document.getElementById('nav-indicator');
+    navItems.forEach((item, i) => {
       item.addEventListener('click', () => {
         const view = item.dataset.view;
         const alreadyActive = item.classList.contains('active');
-        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        navItems.forEach(n => n.classList.remove('active'));
         item.classList.add('active');
+        navIndicator.style.transform = `translateX(${i * 100}%)`;
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
         document.getElementById(`view-${view}`).classList.add('active');
         if (!alreadyActive) {
           if (view === 'health') { healthViewDay = null; renderHealth(); }
           if (view === 'progress') { healthProgressPeriod = 'month'; renderProgress(); }
+          if (view === 'config') { renderConfig(); }
         }
       });
     });
+
+    // Swipe left/right on the Plan view to move a day at a time, clamped to this week (Mon–Sun).
+    (function initPlanSwipe() {
+      // Listens on body (not #view-health) because #view-health is only as tall as its own
+      // content — on a short day (e.g. Rest Day) there's blank space below it, down to the
+      // floating nav, that belongs to body's background. Scoping to #view-health left that
+      // space dead to swipes. Gated to fire only when the Plan tab is active and the gesture
+      // didn't start on the header/nav chrome or an open sheet/overlay.
+      const PLAN_DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
+      let startX = null, startY = null, axis = null, tracking = false;
+
+      function overlayOpen() {
+        return document.getElementById('edit-overlay').classList.contains('visible')
+          || document.getElementById('confirm-all-overlay').classList.contains('visible');
+      }
+
+      document.body.addEventListener('touchstart', (e) => {
+        tracking = document.getElementById('view-health').classList.contains('active')
+          && !overlayOpen()
+          && !e.target.closest('.bottom-nav')
+          && !e.target.closest('#app-header');
+        if (!tracking) return;
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        axis = null;
+      }, { passive: true });
+
+      // Lock the gesture to an axis as soon as it's unambiguous, and suppress vertical
+      // scroll for the rest of the gesture once it's clearly horizontal — otherwise the
+      // browser's native scroll and the swipe detection fight each other mid-drag.
+      document.body.addEventListener('touchmove', (e) => {
+        if (!tracking) return;
+        const dx = e.touches[0].clientX - startX;
+        const dy = e.touches[0].clientY - startY;
+        if (axis === null && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
+          axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+        }
+        if (axis === 'x') e.preventDefault();
+      }, { passive: false });
+
+      document.body.addEventListener('touchend', (e) => {
+        if (!tracking) return;
+        const dx = e.changedTouches[0].clientX - startX;
+        const wasHorizontal = axis === 'x';
+        tracking = false;
+        if (!wasHorizontal || Math.abs(dx) < 60) return;
+        const todayDow = new Date().getDay();
+        const currentDow = healthViewDay !== null ? healthViewDay : todayDow;
+        const idx = PLAN_DAY_ORDER.indexOf(currentDow);
+        const nextIdx = Math.max(0, Math.min(PLAN_DAY_ORDER.length - 1, idx + (dx < 0 ? 1 : -1)));
+        if (nextIdx !== idx) renderHealth(PLAN_DAY_ORDER[nextIdx]);
+      }, { passive: true });
+    })();
 
     // ============ INIT ============
     async function boot() {
