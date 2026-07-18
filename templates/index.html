@@ -670,7 +670,7 @@
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
       </svg>
-      <span class="nav-label">Plan</span>
+      <span class="nav-label">Fitness</span>
     </button>
     <button class="nav-item" data-view="progress">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -688,7 +688,7 @@
 
   <script>
     // ============ VERSION ============
-    const APP_VERSION = '3.51';
+    const APP_VERSION = '3.52';
     const APP_NAME = 'Acmon';
     document.getElementById('app-footer').innerHTML = `${APP_NAME} v${APP_VERSION} &copy; Setu Kathawate`;
     document.getElementById('app-name-display').textContent = APP_NAME;
@@ -1680,7 +1680,7 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
       const planWeekInfo = getPlanWeekInfo(activePlanForHeader || {}, getWeekMonday());
       const headerHtml = `
         <div class="header">
-          <div class="page-title">Your Plan</div>
+          <div class="page-title">Your Fitness Plan</div>
           ${planSwitchInProgress ? `
             <div style="display:flex;align-items:center;gap:6px;margin-top:4px;font-size:13px;font-weight:600;color:var(--text-secondary);">
               <div class="spinner"></div>
@@ -2551,7 +2551,7 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
 
         <div class="section-header" style="margin-bottom:8px;">Plans</div>
         <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:10px;line-height:1.5;">
-          Each plan has its own Focus, Rest Days, Daily Habits, Session Length, Duration, and Fitness Level. Only one is active at a time — switching regenerates this week under the newly active plan.
+          Each plan has its own Fitness Goals, Rest Days, Daily Habits, Session Length, Duration, and Fitness Level. Only one is active at a time — switching regenerates this week under the newly active plan.
         </div>
         <div id="plans-list">${plans.map(planCardHtml).join('')}</div>
         <button class="btn btn-ghost btn-block" id="new-plan-btn" style="margin-bottom:20px;">${SVG_PLUS} New Plan</button>
@@ -2718,9 +2718,9 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
             <input class="form-input" id="plan-name" type="text" placeholder="e.g. Marathon Training" value="${escapeHtml(plan.name || '')}" autocomplete="off">
           </div>
 
-          <div class="field-heading" style="margin-top:20px;">Your Focus</div>
+          <div class="field-heading" style="margin-top:20px;">Your Fitness Goals</div>
           <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:10px;line-height:1.5;">
-            Describe what you're working on or working around — injuries, goals, priorities. The app uses this to tailor this plan's weekly schedule.
+            Describe your goals in your own words — the way you'd explain them to a fitness coach. The app uses this to tailor this plan's weekly schedule.
           </div>
           <div class="form-field">
             <textarea class="form-input" id="prefs-context" rows="10" placeholder="e.g. Recovering from an IT band issue. Want to strengthen glutes. No high-impact cardio for now." style="resize:vertical;min-height:180px;">${escapeHtml(plan.context || '')}</textarea>
@@ -2780,7 +2780,7 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
 
           <div class="section-header" style="margin-bottom:8px;margin-top:20px;">Session Length</div>
           <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:10px;line-height:1.5;">
-            How long you want each day's workout to take. Requires AI generation (an API key + Focus) — the model sizes exercises to fit this as a hard target, not just something to hope gets picked up from Focus text.
+            How long you want each day's workout to take. Requires AI generation (an API key + Fitness Goals) — the model sizes exercises to fit this as a hard target, not just something to hope gets picked up from your goals text.
           </div>
           <div class="form-field" style="display:flex;align-items:center;gap:8px;">
             <input class="form-input" id="prefs-session-minutes" type="number" min="5" max="180" placeholder="e.g. 30" value="${plan.sessionMinutes || ''}" style="max-width:120px;">
