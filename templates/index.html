@@ -165,9 +165,12 @@
     .task-checkbox.checked { background: var(--success); border-color: var(--success); }
     .task-checkbox svg { width: 12px; height: 12px; opacity: 0; }
     .task-checkbox.checked svg { opacity: 1; }
-    .ampm-checks { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
-    .ampm-check-col { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-    .ampm-mini-label { font-size: 9px; font-weight: 600; color: var(--text-tertiary); line-height: 1; }
+    .ampm-pill {
+      font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 20px;
+      border: 1px solid var(--border); background: var(--bg); color: var(--text-tertiary);
+      cursor: pointer; flex-shrink: 0; transition: all 0.15s ease;
+    }
+    .ampm-pill.done { background: var(--success-dim); border-color: var(--success); color: var(--success); }
     .task-content { flex: 1; min-width: 0; }
     .task-title { font-size: 14px; color: var(--text-primary); margin-bottom: 4px; }
     .task-item.completed .task-title { color: var(--text-tertiary); text-decoration: line-through; }
@@ -697,7 +700,7 @@
 
   <script>
     // ============ VERSION ============
-    const APP_VERSION = '3.58';
+    const APP_VERSION = '3.59';
     const APP_NAME = 'Acmon';
     document.getElementById('app-footer').innerHTML = `${APP_NAME} v${APP_VERSION} &copy; Setu Kathawate`;
     document.getElementById('app-name-display').textContent = APP_NAME;
@@ -1931,16 +1934,27 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
         view.querySelector('#health-add-exercise')?.addEventListener('click', () => openExerciseSheet(displayDow));
         view.querySelectorAll('[data-exercise-id]').forEach(item => {
           const exId = item.dataset.exerciseId;
-          if (item.dataset.twiceDaily) {
-            item.querySelectorAll('.ampm-checkbox').forEach(cb => {
-              cb.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const key = `${exId}-${cb.dataset.period}`;
-                const hs2 = getState(HEALTH_STATE_KEY, {});
-                if (hs2[key] === displayDateStr) { delete hs2[key]; } else { hs2[key] = displayDateStr; }
-                setState(HEALTH_STATE_KEY, hs2);
-                renderHealth();
-              });
+          const isTwiceDaily = !!item.dataset.twiceDaily;
+          item.querySelectorAll('.ampm-pill').forEach(pill => {
+            pill.addEventListener('click', (e) => {
+              e.stopPropagation();
+              const key = `${exId}-${pill.dataset.period}`;
+              const hs2 = getState(HEALTH_STATE_KEY, {});
+              if (hs2[key] === displayDateStr) { delete hs2[key]; } else { hs2[key] = displayDateStr; }
+              setState(HEALTH_STATE_KEY, hs2);
+              renderHealth();
+            });
+          });
+          if (isTwiceDaily) {
+            item.querySelector('.task-checkbox').addEventListener('click', (e) => {
+              e.stopPropagation();
+              const amKey = `${exId}-am`, pmKey = `${exId}-pm`;
+              const hs2 = getState(HEALTH_STATE_KEY, {});
+              const bothDone = hs2[amKey] === displayDateStr && hs2[pmKey] === displayDateStr;
+              if (bothDone) { delete hs2[amKey]; delete hs2[pmKey]; }
+              else { hs2[amKey] = displayDateStr; hs2[pmKey] = displayDateStr; }
+              setState(HEALTH_STATE_KEY, hs2);
+              renderHealth();
             });
           } else {
             item.querySelector('.task-checkbox').addEventListener('click', (e) => {
@@ -1959,37 +1973,26 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
 
       const exercisesHtml = exercises.map(ex => {
         const tag = ex.duration ? ex.duration : `${ex.sets} × ${ex.reps}`;
-        const checkboxHtml = ex.twiceDaily ? (() => {
-          const amDone = hs[`${ex.id}-am`] === displayDateStr;
-          const pmDone = hs[`${ex.id}-pm`] === displayDateStr;
-          return `
-            <div class="ampm-checks">
-              <div class="ampm-check-col">
-                <button class="task-checkbox${amDone ? ' checked' : ''} ampm-checkbox" data-period="am">
-                  <svg fill="none" stroke="white" stroke-width="3" viewBox="0 0 24 24"><polyline points="20,6 9,17 4,12"/></svg>
-                </button>
-                <span class="ampm-mini-label">AM</span>
-              </div>
-              <div class="ampm-check-col">
-                <button class="task-checkbox${pmDone ? ' checked' : ''} ampm-checkbox" data-period="pm">
-                  <svg fill="none" stroke="white" stroke-width="3" viewBox="0 0 24 24"><polyline points="20,6 9,17 4,12"/></svg>
-                </button>
-                <span class="ampm-mini-label">PM</span>
-              </div>
-            </div>
-          `;
-        })() : `
-          <button class="task-checkbox${hs[ex.id] === displayDateStr ? ' checked' : ''}">
+        const isDone = exerciseFullyDone(ex, displayDateStr, hs);
+        // Twice-daily items get one normal checkbox in the gutter (ticks/clears both periods
+        // at once — a "mark it all done" shortcut) plus two small AM/PM pills next to the tag
+        // for independent control. Replaces an earlier version that stacked two full
+        // checkbox+label pairs in the narrow gutter, which read as cramped.
+        const checkboxHtml = `
+          <button class="task-checkbox${isDone ? ' checked' : ''}">
             <svg fill="none" stroke="white" stroke-width="3" viewBox="0 0 24 24"><polyline points="20,6 9,17 4,12"/></svg>
           </button>
         `;
-        const isDone = exerciseFullyDone(ex, displayDateStr, hs);
+        const ampmPillsHtml = ex.twiceDaily ? `
+          <button class="ampm-pill${hs[`${ex.id}-am`] === displayDateStr ? ' done' : ''}" data-period="am">AM</button>
+          <button class="ampm-pill${hs[`${ex.id}-pm`] === displayDateStr ? ' done' : ''}" data-period="pm">PM</button>
+        ` : '';
         return `
           <div class="task-item${isDone ? ' completed' : ''}" data-exercise-id="${ex.id}"${ex.twiceDaily ? ' data-twice-daily="1"' : ''}>
             ${checkboxHtml}
             <div class="task-content">
               <div class="task-title">${escapeHtml(ex.name)}</div>
-              <div class="task-meta"><span class="task-time">${escapeHtml(tag)}</span></div>
+              <div class="task-meta"><span class="task-time">${escapeHtml(tag)}</span>${ampmPillsHtml}</div>
               ${ex.note ? `<div style="font-size:12px;color:var(--text-tertiary);margin-top:4px;">${escapeHtml(ex.note)}</div>` : ''}
               <a class="ex-watch-link" href="https://www.youtube.com/results?search_query=${encodeURIComponent(ex.name + ' exercise proper form')}" target="_blank" rel="noopener">Watch how →</a>
             </div>
