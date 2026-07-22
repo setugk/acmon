@@ -696,7 +696,7 @@
 
   <script>
     // ============ VERSION ============
-    const APP_VERSION = '3.56';
+    const APP_VERSION = '3.57';
     const APP_NAME = 'Acmon';
     document.getElementById('app-footer').innerHTML = `${APP_NAME} v${APP_VERSION} &copy; Setu Kathawate`;
     document.getElementById('app-name-display').textContent = APP_NAME;
@@ -1014,21 +1014,22 @@
 
     // Curated, not random — shows off the multi-plan library (two genuinely different
     // programs), AM/PM habits, a rest day, and a real streak, all computed relative to
-    // today so it never looks stale no matter when someone visits.
+    // today so it never looks stale no matter when someone visits. Deliberately generic —
+    // illustrative example content, not any real person's actual training/medical history.
     function buildDemoSeed() {
       const mondayStr = getWeekMonday();
-      const stpId = 'plan-demo-stp';
-      const itbandId = 'plan-demo-itband';
+      const generalId = 'plan-demo-general';
+      const recoveryId = 'plan-demo-recovery';
 
       const plans = [
         {
-          id: stpId,
-          name: 'STP Endurance Training',
-          context: 'Training for endurance road cycling events like STP (Seattle-to-Portland). Bike fitter recommended building overall upper and lower body strength for long days in the saddle, with extra emphasis on glute and thigh strength. Also want solid aerobic endurance — steady long efforts, not sprint intervals.',
+          id: generalId,
+          name: 'General Fitness',
+          context: 'Building overall strength and cardio fitness. Nothing specific to train for right now — just want a balanced, sustainable routine I can stick with.',
           restDays: [3],
           dailyHabits: [
-            { id: 'dh-demo-meditation', name: 'Meditation', duration: '10 min' },
-            { id: 'dh-demo-hipflexor', name: 'Hip Flexor Stretch', sets: 1, reps: '2 min hold each side', twiceDaily: true },
+            { id: 'dh-demo-stretch', name: 'Stretching', duration: '10 min' },
+            { id: 'dh-demo-posture', name: 'Posture Reset', sets: 1, reps: '1 min hold', twiceDaily: true },
           ],
           fitnessLevel: 'intermediate',
           sessionMinutes: 45,
@@ -1037,16 +1038,16 @@
           planEndNotified: false,
         },
         {
-          id: itbandId,
-          name: 'IT Band Recovery (PT)',
-          context: "Recovering from an IT band injury from biking. Following my PT's specific rehab protocol.",
+          id: recoveryId,
+          name: 'Injury Recovery Plan',
+          context: "Recovering from a minor lower-body strain, following a physical therapist's rehab routine.",
           restDays: [0, 1, 2, 3, 4, 5, 6],
           dailyHabits: [
-            { id: 'dh-demo-tib', name: 'Anterior Tibialis Release', duration: '1-2 min' },
-            { id: 'dh-demo-ham', name: 'Hamstring Release Ball', duration: '1-2 min' },
-            { id: 'dh-demo-monster', name: 'Hip Monster Walk (Band)', sets: 1, reps: '4-5 boxes' },
-            { id: 'dh-demo-stepdown', name: 'Hip Step Down (Side)', sets: 2, reps: '8-10 each side' },
-            { id: 'dh-demo-deadlift', name: 'Hip Deadlift (Band)', sets: 2, reps: '10, green band' },
+            { id: 'dh-demo-ankle', name: 'Ankle Circles', duration: '1-2 min' },
+            { id: 'dh-demo-hamstring', name: 'Hamstring Stretch', duration: '1-2 min' },
+            { id: 'dh-demo-bandwalk', name: 'Band Walk', sets: 1, reps: '10 steps each way' },
+            { id: 'dh-demo-legraise', name: 'Side-Lying Leg Raise', sets: 2, reps: '10 each side' },
+            { id: 'dh-demo-corehold', name: 'Core Stability Hold', sets: 2, reps: '30 sec' },
           ],
           fitnessLevel: 'beginner',
           sessionMinutes: null,
@@ -1057,14 +1058,14 @@
       ];
 
       const baseSchedule = {
-        1: { type: 'Strength Training — Lower Body (Glute Focus)', exercises: [
-          { id: 'demo-d1-0', name: 'Bulgarian Split Squat', sets: 3, reps: '10-12 each leg' },
-          { id: 'demo-d1-1', name: 'Hip Thrust', sets: 3, reps: '12 reps' },
-          { id: 'demo-d1-2', name: 'Walking Lunge', sets: 2, reps: '12 each leg' },
+        1: { type: 'Strength Training — Lower Body', exercises: [
+          { id: 'demo-d1-0', name: 'Squat', sets: 3, reps: '10-12 reps' },
+          { id: 'demo-d1-1', name: 'Lunge', sets: 3, reps: '10 each leg' },
+          { id: 'demo-d1-2', name: 'Glute Bridge', sets: 2, reps: '12 reps' },
           { id: 'demo-d1-3', name: 'Calf Raise', sets: 2, reps: '15 reps' },
         ]},
         2: { type: 'Aerobic Activity', exercises: [
-          { id: 'demo-d2-0', name: 'Steady-state ride', duration: '45 min', note: 'Zone 2 effort' },
+          { id: 'demo-d2-0', name: 'Brisk Walk or Jog', duration: '30 min' },
         ]},
         3: { isRest: true, note: 'Rest day — you set this day off in Settings.' },
         4: { type: 'Strength Training — Upper Body', exercises: [
@@ -1073,14 +1074,14 @@
           { id: 'demo-d4-2', name: 'Plank', sets: 3, reps: '30-45 sec' },
         ]},
         5: { type: 'Aerobic Activity', exercises: [
-          { id: 'demo-d5-0', name: 'Steady-state ride', duration: '45 min', note: 'Zone 2 effort' },
+          { id: 'demo-d5-0', name: 'Cycling or Jogging', duration: '30 min' },
         ]},
         6: { type: 'Active Rest', exercises: [
           { id: 'demo-d6-0', name: 'Foam Rolling', duration: '15 min' },
           { id: 'demo-d6-1', name: 'Mobility Flow', duration: '15 min' },
         ]},
-        0: { type: 'Long Ride', exercises: [
-          { id: 'demo-d0-0', name: 'Long steady-state ride', duration: '45 min', note: 'Zone 2 aerobic effort; build saddle time' },
+        0: { type: 'Long Cardio Session', exercises: [
+          { id: 'demo-d0-0', name: 'Long Cardio Session', duration: '40 min', note: 'Steady pace — walk, run, bike, whatever you enjoy' },
         ]},
       };
       const schedule = {};
@@ -1117,9 +1118,9 @@
       return {
         'health-onboarded': true,
         'health-plans': plans,
-        'health-active-plan-id': stpId,
+        'health-active-plan-id': generalId,
         'health-prefs': { apiKey: null, aiError: null },
-        'health-weekly-schedule': { weekOf: mondayStr, aiGenerated: true, planId: stpId, schedule },
+        'health-weekly-schedule': { weekOf: mondayStr, aiGenerated: true, planId: generalId, schedule },
         'health-state': hs,
         'health-extra': {},
         'health-plan-history': [],
@@ -2715,7 +2716,9 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
               <div id="api-key-status-line" style="font-size:12px;color:${hasAiError ? 'var(--danger)' : 'var(--text-tertiary)'};margin-bottom:10px;line-height:1.5;">
                 ${hasAiError
                   ? `Last attempt failed: ${escapeHtml(globalPrefs.aiError)}. This usually means the key expired or is invalid — update it below.`
-                  : `Required for AI-personalized plans. Shared by every plan. Stored only on this device — never sent anywhere except Anthropic's API.`}
+                  : DEMO_MODE
+                    ? `This is a public demo — your key is saved only in this browser's local storage, never sent anywhere except Anthropic's API, and never reaches this app's server. Since this link is public, use a fresh or low-limit key here rather than a primary one.`
+                    : `Required for AI-personalized plans. Shared by every plan. Stored only on this device — never sent anywhere except Anthropic's API.`}
               </div>
               <div class="form-field">
                 <input class="form-input" id="prefs-api-key" type="password" placeholder="sk-ant-api03-…" autocomplete="off">
@@ -2793,7 +2796,9 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
         statusLine.style.color = he ? 'var(--danger)' : 'var(--text-tertiary)';
         statusLine.textContent = he
           ? `Last attempt failed: ${p.aiError}. This usually means the key expired or is invalid — update it below.`
-          : `Required for AI-personalized plans. Shared by every plan. Stored only on this device — never sent anywhere except Anthropic's API.`;
+          : DEMO_MODE
+            ? `This is a public demo — your key is saved only in this browser's local storage, never sent anywhere except Anthropic's API, and never reaches this app's server. Since this link is public, use a fresh or low-limit key here rather than a primary one.`
+            : `Required for AI-personalized plans. Shared by every plan. Stored only on this device — never sent anywhere except Anthropic's API.`;
         document.getElementById('api-key-buttons').innerHTML = `
           <button class="btn btn-ghost btn-sm" id="prefs-key-save" style="flex:1;">${hk ? 'Update key' : 'Save key'}</button>
           ${hk ? `<button class="btn btn-ghost btn-sm" style="color:var(--danger);border-color:var(--danger);" id="prefs-key-remove">Remove</button>` : ''}
