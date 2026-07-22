@@ -703,7 +703,7 @@
 
   <script>
     // ============ VERSION ============
-    const APP_VERSION = '3.63';
+    const APP_VERSION = '3.64';
     const APP_NAME = 'Acmon';
     document.getElementById('app-footer').innerHTML = `${APP_NAME} v${APP_VERSION} &copy; Setu Kathawate`;
     document.getElementById('app-name-display').textContent = APP_NAME;
@@ -766,7 +766,7 @@
             nextBtn.disabled = true;
             status.textContent = 'Personalizing your plan…';
             try {
-              const generated = await generateAISchedule(getWeekMonday(), updatedPlan, apiKey);
+              const generated = await generateAISchedule(getWeekMonday(), updatedPlan, apiKey, getState(HEALTH_PREFS_KEY, {}).bodyStats);
               setState(WEEKLY_SCHEDULE_KEY, { ...generated, planId: updatedPlan.id });
               loadHealthSchedule();
             } catch (err) {
@@ -1557,9 +1557,23 @@
       return { weekOf: mondayStr, schedule };
     }
 
-    async function generateAISchedule(mondayStr, prefs, apiKey) {
+    async function generateAISchedule(mondayStr, prefs, apiKey, bodyStats) {
       const genId = Date.now();
       const level = prefs.fitnessLevel || 'beginner';
+      // Body stats are global (one body, shared across every plan) not per-plan, unlike
+      // everything else fed into this prompt — passed in separately rather than read off
+      // `prefs`, which is the active PLAN object despite the parameter name.
+      const bs = bodyStats || {};
+      const bodyStatsParts = [
+        bs.age && `${bs.age} years old`,
+        bs.biologicalSex && bs.biologicalSex !== 'unspecified' && bs.biologicalSex,
+        bs.height && `height ${bs.height}`,
+        bs.weight && `weight ${bs.weight}`,
+        bs.bodyFatPercent && `${bs.bodyFatPercent}% body fat`,
+      ].filter(Boolean);
+      const bodyStatsLine = bodyStatsParts.length > 0
+        ? `\nUser's physical stats: ${bodyStatsParts.join(', ')}. Use this alongside their fitness level to size suggested starting weights/resistance and exercise intensity realistically for their body — fold a concrete suggested weight into the exercise's "note" field where it's genuinely useful (e.g. "note": "start around 15–20 lb dumbbells"), not as a generic "use a moderate weight" placeholder. Don't mention these stats back to the user or treat them as the main focus — they're sizing context, not the point of the plan.`
+        : '';
       const planWeek = getPlanWeekInfo(prefs, mondayStr);
       const planWeekLine = (planWeek && planWeek.isActive)
         ? `\nThis is week ${planWeek.weekNumber} of a ${planWeek.totalWeeks}-week plan the user set for themselves.${planWeek.weekNumber === planWeek.totalWeeks ? ' This is the FINAL week — taper: reduce volume/intensity roughly 30-50% for whatever the focus names, to wind down safely rather than stopping abruptly.' : ''}`
@@ -1578,7 +1592,7 @@
       const prompt = `You are a personal fitness coach. Create a weekly workout schedule.
 
 User context: "${prefs.context}"
-Fitness level: ${level}${planWeekLine}${restDayLine}${dailyHabitsLine}${sessionMinutesLine}
+Fitness level: ${level}${planWeekLine}${restDayLine}${dailyHabitsLine}${sessionMinutesLine}${bodyStatsLine}
 
 Return ONLY a JSON object (no markdown, no explanation):
 {
@@ -1711,7 +1725,7 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
       setState(WEEKLY_SCHEDULE_KEY, { ...generated, planId: plan.id });
       if (globalPrefs.apiKey && plan.context) {
         try {
-          const aiGen = await generateAISchedule(mondayStr, plan, globalPrefs.apiKey);
+          const aiGen = await generateAISchedule(mondayStr, plan, globalPrefs.apiKey, globalPrefs.bodyStats);
           setState(WEEKLY_SCHEDULE_KEY, { ...aiGen, planId: plan.id });
           // Success proves the key/call works again — clear any earlier failure flag
           // so the Settings badge and Plan-tab banner both stop nagging.
@@ -2676,6 +2690,7 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
       const globalPrefs = getState(HEALTH_PREFS_KEY, {});
       const hasKey = !!(globalPrefs.apiKey);
       const hasAiError = !!(globalPrefs.aiError);
+      const bodyStats = globalPrefs.bodyStats || {};
       const plans = getPlans();
       const activePlanId = getActivePlanId();
       const planHistory = getState(PLAN_HISTORY_KEY, []).slice().reverse();
@@ -2772,6 +2787,50 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
                 <button class="btn btn-ghost btn-sm" id="prefs-key-save" style="flex:1;">${hasKey ? 'Update key' : 'Save key'}</button>
                 ${hasKey ? `<button class="btn btn-ghost btn-sm" style="color:var(--danger);border-color:var(--danger);" id="prefs-key-remove">Remove</button>` : ''}
               </div>
+            </div>
+          </details>
+
+          <details class="api-key-details" id="body-details-details">
+            <summary>
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg>
+              Body Details
+              <span class="api-key-chevron"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="6,9 12,15 18,9"/></svg></span>
+            </summary>
+            <div class="api-key-panel">
+              <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:10px;line-height:1.5;">
+                Optional, shared across every plan. Helps the AI size suggested weights and intensity to your actual body, not just your fitness level. Update anytime as you change — the next regenerate picks up whatever's current.
+              </div>
+              <div style="display:flex;gap:8px;margin-bottom:10px;">
+                <div class="form-field" style="flex:1;margin-bottom:0;">
+                  <label class="form-label">Height</label>
+                  <input class="form-input" id="body-height" type="text" placeholder="e.g. 5'10&quot; or 178 cm" autocomplete="off">
+                </div>
+                <div class="form-field" style="flex:1;margin-bottom:0;">
+                  <label class="form-label">Weight</label>
+                  <input class="form-input" id="body-weight" type="text" placeholder="e.g. 165 lbs or 75 kg" autocomplete="off">
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;margin-bottom:10px;">
+                <div class="form-field" style="flex:1;margin-bottom:0;">
+                  <label class="form-label">Age</label>
+                  <input class="form-input" id="body-age" type="number" min="1" max="120" placeholder="e.g. 34">
+                </div>
+                <div class="form-field" style="flex:1;margin-bottom:0;">
+                  <label class="form-label">Body Fat %</label>
+                  <input class="form-input" id="body-fat" type="number" min="1" max="70" placeholder="e.g. 18">
+                </div>
+              </div>
+              <div class="form-field" style="margin-bottom:10px;">
+                <label class="form-label">Biological Sex</label>
+                <div style="display:flex;gap:6px;" id="body-sex-toggle">
+                  ${['male', 'female', 'unspecified'].map(val => {
+                    const labels = { male: 'Male', female: 'Female', unspecified: 'Prefer not to say' };
+                    const active = (bodyStats.biologicalSex || 'unspecified') === val;
+                    return `<button class="selector-btn btn-sm${active ? ' selected' : ''}" data-sex="${val}">${labels[val]}</button>`;
+                  }).join('')}
+                </div>
+              </div>
+              <button class="btn btn-ghost btn-block" id="body-details-save">Save</button>
             </div>
           </details>
 
@@ -2874,6 +2933,34 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
         });
       }
       wireApiKeyButtons();
+
+      // Set via JS property assignment, not an HTML `value="..."` attribute — a height like
+      // 5'10" contains a literal double-quote that would otherwise terminate the attribute
+      // early and silently truncate the stored value on the next render.
+      document.getElementById('body-height').value = bodyStats.height || '';
+      document.getElementById('body-weight').value = bodyStats.weight || '';
+      document.getElementById('body-age').value = bodyStats.age || '';
+      document.getElementById('body-fat').value = bodyStats.bodyFatPercent || '';
+
+      let currentBiologicalSex = bodyStats.biologicalSex || 'unspecified';
+      view.querySelectorAll('#body-sex-toggle .selector-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          currentBiologicalSex = btn.dataset.sex;
+          view.querySelectorAll('#body-sex-toggle .selector-btn').forEach(b => b.classList.toggle('selected', b.dataset.sex === currentBiologicalSex));
+        });
+      });
+      document.getElementById('body-details-save').addEventListener('click', () => {
+        const newBodyStats = {
+          height: document.getElementById('body-height').value.trim(),
+          weight: document.getElementById('body-weight').value.trim(),
+          age: document.getElementById('body-age').value.trim(),
+          bodyFatPercent: document.getElementById('body-fat').value.trim(),
+          biologicalSex: currentBiologicalSex,
+        };
+        const saved = getState(HEALTH_PREFS_KEY, {});
+        setState(HEALTH_PREFS_KEY, { ...saved, bodyStats: newBodyStats });
+        showToast('Body details saved — next regenerate will use them.');
+      });
 
       document.getElementById('reset-all-btn').addEventListener('click', () => {
         if (DEMO_MODE) {
@@ -3320,7 +3407,7 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
         const mondayStr = getWeekMonday();
         try {
           const generated = isAiRequest
-            ? await generateAISchedule(mondayStr, updatedPlan, globalPrefs.apiKey)
+            ? await generateAISchedule(mondayStr, updatedPlan, globalPrefs.apiKey, globalPrefs.bodyStats)
             : generateWeekSchedule(mondayStr, updatedPlan);
           setState(WEEKLY_SCHEDULE_KEY, { ...generated, planId: updatedPlan.id });
           loadHealthSchedule();
