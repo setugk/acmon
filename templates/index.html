@@ -703,7 +703,7 @@
 
   <script>
     // ============ VERSION ============
-    const APP_VERSION = '3.64';
+    const APP_VERSION = '3.65';
     const APP_NAME = 'Acmon';
     document.getElementById('app-footer').innerHTML = `${APP_NAME} v${APP_VERSION} &copy; Setu Kathawate`;
     document.getElementById('app-name-display').textContent = APP_NAME;
@@ -1607,6 +1607,8 @@ Return ONLY a JSON object (no markdown, no explanation):
 
 Keys are day-of-week numbers — 1–5 are Mon–Fri, 6 is Saturday, 0 is Sunday. All seven are required.
 DEFAULT for Mon–Fri, when the user hasn't specified a day-by-day structure: rotate strength/aerobic/strength/aerobic/active-rest (4–5 exercises on strength days, 1 on aerobic days, 2–3 on active rest). This default exists only so a vague or short Focus still produces a balanced week — it is NOT a constraint on the user.
+If the user's Rest Days remove one of the days this default rotation would normally use for strength training, do NOT just drop that session — relocate it to one of the remaining non-rest days instead. If their Focus mentions wanting multiple distinct things (e.g. both upper AND lower body strength, or a specific muscle group like glutes/thighs, alongside aerobic endurance), every one of those things needs its own real, dedicated session somewhere across the week's non-rest days — never let a rest day silently absorb one of them, and never substitute a second cardio day for a strength day just because the "usual" slot for it got removed.
+Every non-rest day needs a session that actually earns whatever access/equipment the user described — if they mentioned a full gym, most non-rest days should include real gym-appropriate strength work, not cardio-machine filler on days that could otherwise host it. A user with gym access asking for strength training should not end up with only one real strength day out of five active days in the week.
 Sat and Sun are yours to decide based on the user's context — a long endurance session, full rest, light mobility, or anything else that actually fits what they described. If a Session Length budget is given below, it applies to Sat/Sun exactly like every other day — don't schedule a long session that blows past it just because weekends are usually where "long ride" style sessions go.
 If a day should be a true rest day with no real workout, use {"isRest": true, "note": "..."} — that's the only way it's tracked as rest rather than a missed workout.
 ${level === 'beginner' ? 'Beginner: bodyweight and light dumbbells only, modest reps, include helpful notes.' : ''}
