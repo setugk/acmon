@@ -703,7 +703,7 @@
 
   <script>
     // ============ VERSION ============
-    const APP_VERSION = '3.68';
+    const APP_VERSION = '3.69';
     const APP_NAME = 'Acmon';
     document.getElementById('app-footer').innerHTML = `${APP_NAME} v${APP_VERSION} &copy; Setu Kathawate`;
     document.getElementById('app-name-display').textContent = APP_NAME;
@@ -1651,7 +1651,7 @@ Using the wrong attribute (e.g. "sets: 2, reps: '10 reps'" for meditation) is an
           'anthropic-dangerous-direct-browser-access': 'true',
         },
         body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
+          model: 'claude-sonnet-5',
           max_tokens: 2048,
           messages: [{ role: 'user', content: prompt }],
         }),
