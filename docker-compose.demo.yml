@@ -1,0 +1,9 @@
+services:
+  acmon-demo:
+    build: .
+    container_name: acmon-demo
+    restart: unless-stopped
+    ports:
+      - "5056:5000"
+    environment:
+      - DEMO_MODE=1

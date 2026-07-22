@@ -1,3 +1,5 @@
+import os
+
 from flask import Flask, jsonify, request, render_template, send_from_directory
 
 import db
@@ -5,10 +7,12 @@ import db
 app = Flask(__name__)
 db.init_db()
 
+DEMO_MODE = os.environ.get('DEMO_MODE') == '1'
+
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', demo_mode=DEMO_MODE)
 
 
 @app.route('/manifest.json')

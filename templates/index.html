@@ -59,6 +59,11 @@
     }
     .app-header-title { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 700; letter-spacing: -0.4px; }
     .app-header-title svg { flex-shrink: 0; }
+    .demo-badge {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+      color: var(--success); background: var(--success-dim);
+      padding: 2px 7px; border-radius: 20px; flex-shrink: 0;
+    }
 
     .header { margin-bottom: 24px; }
     .greeting { font-size: 14px; color: var(--text-secondary); margin-bottom: 4px; }
@@ -531,6 +536,7 @@
         <path d="M22.1314 18.1733C23.1056 20.0395 21.0529 22.0283 19.2183 20.9955L14.0572 18.0893L19.3052 12.7592L22.1314 18.1733ZM10.3052 18.0873L5.16459 20.9828C3.30857 22.0273 1.2463 19.984 2.27397 18.1186L5.16459 12.8715L10.3052 18.0873ZM14.0572 18.0893L12.1841 19.9936L10.3052 18.0873L12.1792 17.0326L14.0572 18.0893ZM15.9615 14.7201L13.3199 13.2328L13.1851 13.1625C12.5502 12.8578 11.8102 12.8577 11.1753 13.1625L11.0406 13.2328L8.64213 14.5824L12.3638 7.82853L15.9615 14.7201ZM8.02592 5.3295C8.44675 5.32951 8.86219 5.36604 9.26127 5.4379L5.16459 12.8715L4.96538 12.6693C4.16281 11.7381 3.66367 10.8678 3.66362 9.63614C3.66362 7.19486 5.61684 5.3295 8.02592 5.3295ZM16.3335 5.28361C18.7421 5.28361 20.6968 7.20361 20.6968 9.64396C20.6968 10.8748 20.1974 11.738 19.3941 12.6693L19.3052 12.7592L15.4351 5.34708C15.7208 5.3058 16.0206 5.28362 16.3335 5.28361ZM10.6333 2.96036C11.4717 1.66257 13.3955 1.68421 14.2046 3.0004L14.2818 3.13614L15.4351 5.34708C13.9452 5.56236 12.8475 6.34926 12.3746 7.84415C11.9326 6.44807 10.7066 5.69817 9.26127 5.4379L10.5533 3.09415L10.6333 2.96036Z" fill="white"/>
       </svg>
       <span id="header-app-name">Acmon</span>
+      {% if demo_mode %}<span class="demo-badge">DEMO</span>{% endif %}
     </span>
   </header>
 
@@ -690,7 +696,7 @@
 
   <script>
     // ============ VERSION ============
-    const APP_VERSION = '3.55';
+    const APP_VERSION = '3.56';
     const APP_NAME = 'Acmon';
     document.getElementById('app-footer').innerHTML = `${APP_NAME} v${APP_VERSION} &copy; Setu Kathawate`;
     document.getElementById('app-name-display').textContent = APP_NAME;
@@ -954,15 +960,26 @@
       }
     }
 
-    // ============ STATE (server-synced, replaces localStorage) ============
+    // ============ STATE (server-synced, replaces localStorage — except in DEMO_MODE,
+    // where it's the other way around: everything lives in the visitor's own browser via
+    // localStorage and the server/backend DB is never touched. Same choke point either way
+    // (getState/setState/removeState/loadState), so nothing above this needs to know which
+    // mode it's in — mirrors the pattern Journery's demo mode uses. ============
+    const DEMO_MODE = {{ 'true' if demo_mode else 'false' }};
+    const DEMO_STORAGE_KEY = 'acmon_demo_db_v1';
     let store = {};
 
     function getState(key, fallback = null) {
       return store[key] !== undefined ? store[key] : fallback;
     }
 
+    function persistDemoStore() {
+      localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(store));
+    }
+
     function setState(key, value) {
       store[key] = value;
+      if (DEMO_MODE) { persistDemoStore(); return Promise.resolve(); }
       return fetch(`/api/state/${key}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -972,13 +989,141 @@
 
     function removeState(key) {
       delete store[key];
+      if (DEMO_MODE) { persistDemoStore(); return Promise.resolve(); }
       return fetch(`/api/state/${key}`, { method: 'DELETE' }).catch(err => console.error(`Failed to delete ${key}:`, err));
     }
 
     async function loadState() {
+      if (DEMO_MODE) {
+        let parsed = null;
+        try { parsed = JSON.parse(localStorage.getItem(DEMO_STORAGE_KEY)); } catch { parsed = null; }
+        // Reseed whenever there's nothing usable yet — covers first visit AND right after
+        // "Reset everything" (which removes every key, then reloads) — no separate
+        // demo-only reset button needed, the existing one already does the right thing.
+        if (!parsed || !Array.isArray(parsed['health-plans']) || parsed['health-plans'].length === 0) {
+          parsed = buildDemoSeed();
+          localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(parsed));
+        }
+        store = parsed;
+        return;
+      }
       const res = await fetch('/api/state');
       if (!res.ok) throw new Error(`Failed to load state: ${res.status}`);
       store = await res.json();
+    }
+
+    // Curated, not random — shows off the multi-plan library (two genuinely different
+    // programs), AM/PM habits, a rest day, and a real streak, all computed relative to
+    // today so it never looks stale no matter when someone visits.
+    function buildDemoSeed() {
+      const mondayStr = getWeekMonday();
+      const stpId = 'plan-demo-stp';
+      const itbandId = 'plan-demo-itband';
+
+      const plans = [
+        {
+          id: stpId,
+          name: 'STP Endurance Training',
+          context: 'Training for endurance road cycling events like STP (Seattle-to-Portland). Bike fitter recommended building overall upper and lower body strength for long days in the saddle, with extra emphasis on glute and thigh strength. Also want solid aerobic endurance — steady long efforts, not sprint intervals.',
+          restDays: [3],
+          dailyHabits: [
+            { id: 'dh-demo-meditation', name: 'Meditation', duration: '10 min' },
+            { id: 'dh-demo-hipflexor', name: 'Hip Flexor Stretch', sets: 1, reps: '2 min hold each side', twiceDaily: true },
+          ],
+          fitnessLevel: 'intermediate',
+          sessionMinutes: 45,
+          planStartDate: mondayStr,
+          planDurationWeeks: 12,
+          planEndNotified: false,
+        },
+        {
+          id: itbandId,
+          name: 'IT Band Recovery (PT)',
+          context: "Recovering from an IT band injury from biking. Following my PT's specific rehab protocol.",
+          restDays: [0, 1, 2, 3, 4, 5, 6],
+          dailyHabits: [
+            { id: 'dh-demo-tib', name: 'Anterior Tibialis Release', duration: '1-2 min' },
+            { id: 'dh-demo-ham', name: 'Hamstring Release Ball', duration: '1-2 min' },
+            { id: 'dh-demo-monster', name: 'Hip Monster Walk (Band)', sets: 1, reps: '4-5 boxes' },
+            { id: 'dh-demo-stepdown', name: 'Hip Step Down (Side)', sets: 2, reps: '8-10 each side' },
+            { id: 'dh-demo-deadlift', name: 'Hip Deadlift (Band)', sets: 2, reps: '10, green band' },
+          ],
+          fitnessLevel: 'beginner',
+          sessionMinutes: null,
+          planStartDate: mondayStr,
+          planDurationWeeks: 3,
+          planEndNotified: false,
+        },
+      ];
+
+      const baseSchedule = {
+        1: { type: 'Strength Training — Lower Body (Glute Focus)', exercises: [
+          { id: 'demo-d1-0', name: 'Bulgarian Split Squat', sets: 3, reps: '10-12 each leg' },
+          { id: 'demo-d1-1', name: 'Hip Thrust', sets: 3, reps: '12 reps' },
+          { id: 'demo-d1-2', name: 'Walking Lunge', sets: 2, reps: '12 each leg' },
+          { id: 'demo-d1-3', name: 'Calf Raise', sets: 2, reps: '15 reps' },
+        ]},
+        2: { type: 'Aerobic Activity', exercises: [
+          { id: 'demo-d2-0', name: 'Steady-state ride', duration: '45 min', note: 'Zone 2 effort' },
+        ]},
+        3: { isRest: true, note: 'Rest day — you set this day off in Settings.' },
+        4: { type: 'Strength Training — Upper Body', exercises: [
+          { id: 'demo-d4-0', name: 'Push-up', sets: 3, reps: '10-12 reps' },
+          { id: 'demo-d4-1', name: 'Bent-over Row', sets: 3, reps: '10-12 reps' },
+          { id: 'demo-d4-2', name: 'Plank', sets: 3, reps: '30-45 sec' },
+        ]},
+        5: { type: 'Aerobic Activity', exercises: [
+          { id: 'demo-d5-0', name: 'Steady-state ride', duration: '45 min', note: 'Zone 2 effort' },
+        ]},
+        6: { type: 'Active Rest', exercises: [
+          { id: 'demo-d6-0', name: 'Foam Rolling', duration: '15 min' },
+          { id: 'demo-d6-1', name: 'Mobility Flow', duration: '15 min' },
+        ]},
+        0: { type: 'Long Ride', exercises: [
+          { id: 'demo-d0-0', name: 'Long steady-state ride', duration: '45 min', note: 'Zone 2 aerobic effort; build saddle time' },
+        ]},
+      };
+      const schedule = {};
+      for (let d = 0; d <= 6; d++) {
+        const day = { ...baseSchedule[d] };
+        const dayHabits = plans[0].dailyHabits.map(h => ({ ...h, id: `${h.id}-d${d}` }));
+        day.exercises = day.isRest ? dayHabits : [...(day.exercises || []), ...dayHabits];
+        schedule[d] = day;
+      }
+
+      // Mark the last few days complete for a real-looking streak, ending today partially
+      // done (a fresh, all-done demo reads less like an actual in-progress week).
+      const hs = {};
+      const today = new Date();
+      for (let offset = 3; offset >= 1; offset--) {
+        const d = new Date(today); d.setDate(today.getDate() - offset);
+        const dateStr = localDateStr(d);
+        const appDow = d.getDay();
+        const day = schedule[appDow];
+        if (day.isRest) continue;
+        for (const ex of day.exercises) {
+          if (ex.twiceDaily) { hs[`${ex.id}-am`] = dateStr; hs[`${ex.id}-pm`] = dateStr; }
+          else { hs[ex.id] = dateStr; }
+        }
+      }
+      const todayStr = localDateStr(today);
+      const todayDay = schedule[today.getDay()];
+      if (!todayDay.isRest && todayDay.exercises.length > 0) {
+        const first = todayDay.exercises[0];
+        if (first.twiceDaily) hs[`${first.id}-am`] = todayStr;
+        else hs[first.id] = todayStr;
+      }
+
+      return {
+        'health-onboarded': true,
+        'health-plans': plans,
+        'health-active-plan-id': stpId,
+        'health-prefs': { apiKey: null, aiError: null },
+        'health-weekly-schedule': { weekOf: mondayStr, aiGenerated: true, planId: stpId, schedule },
+        'health-state': hs,
+        'health-extra': {},
+        'health-plan-history': [],
+      };
     }
 
     const ACTIVITY_CORPUS = [
